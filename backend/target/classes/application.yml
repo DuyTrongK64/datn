@@ -1,0 +1,36 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/attendance_db
+    username: postgres
+    password: postgres
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+
+app:
+  security:
+    jwt:
+      secret: "attendance-management-secret-key-for-graduation-project-2026"
+      access-token-expiration-minutes: 30
+      refresh-token-expiration-days: 14
+    login:
+      max-failed-attempts: 5
+      lock-duration-minutes: 15
+
+  cors:
+    allowed-origins: "http://localhost:5173"
+
+logging:
+  level:
+    org.hibernate.SQL: warn
+    org.springframework.security: info
