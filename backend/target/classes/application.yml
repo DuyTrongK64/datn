@@ -4,8 +4,9 @@ server:
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/attendance_db
-    username: postgres
-    password: postgres
+    username: attendance_user
+    password: attendance_pass
+
 
   jpa:
     hibernate:
