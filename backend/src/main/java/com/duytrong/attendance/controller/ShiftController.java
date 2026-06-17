@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/shifts")
-@PreAuthorize("hasAnyRole('ADMIN','HR')")
+@PreAuthorize("hasRole('ADMIN')")
 public class ShiftController extends SimpleCrudController<Shift> {
     public ShiftController(ShiftRepository repository) {
         super(repository);

@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/contract-types")
-@PreAuthorize("hasAnyRole('ADMIN','HR')")
+@PreAuthorize("hasRole('ADMIN')")
 public class ContractTypeController extends SimpleCrudController<ContractType> {
     public ContractTypeController(ContractTypeRepository repository) {
         super(repository);

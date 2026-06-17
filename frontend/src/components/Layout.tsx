@@ -2,14 +2,16 @@ import { useRef, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../state/AuthContext';
 import { roleLabel } from '../utils/labels';
+import { FloatingChatbot } from './FloatingChatbot';
 
 type MenuItem = { to: string; label: string; show: boolean };
-type MenuGroup = { label: string; items: MenuItem[]; show?: boolean };
+type MenuGroup = { label: string; items: MenuItem[] };
 
 export function Layout() {
   const { user, logout, hasRole } = useAuth();
-  const adminOrHr = hasRole('ADMIN', 'HR');
-  const leader = hasRole('LEADER');
+  const isAdmin = hasRole('ADMIN');
+  const isLeader = hasRole('LEADER');
+  const canViewTeamScope = isAdmin || isLeader;
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const closeTimer = useRef<number | null>(null);
 
@@ -29,72 +31,67 @@ export function Layout() {
   }
 
   const groups: MenuGroup[] = [
-    { label: 'Tổng quan', items: [{ to: '/dashboard', label: 'Tổng quan vận hành', show: true }] },
     {
-      label: 'Nhân sự',
+      label: 'Trang chủ',
       items: [
-        { to: '/profile', label: 'Hồ sơ của tôi', show: true },
-        { to: '/employees', label: 'Danh sách nhân viên', show: adminOrHr || leader }
-      ]
-    },
-    {
-      label: 'Cơ cấu',
-      items: [
-        { to: '/departments', label: 'Phòng ban', show: adminOrHr },
-        { to: '/teams', label: 'Nhóm làm việc', show: adminOrHr || leader }
-      ]
-    },
-    {
-      label: 'Lịch & chính sách',
-      items: [
-        { to: '/shifts', label: 'Lịch làm việc', show: adminOrHr },
-        { to: '/contract-types', label: 'Chính sách hợp đồng', show: adminOrHr },
-        { to: '/employee-contracts', label: 'Hợp đồng nhân viên', show: adminOrHr },
-        { to: '/holidays', label: 'Lịch nghỉ lễ', show: hasRole('ADMIN') },
-        { to: '/schedules', label: 'Lịch cá nhân đặc biệt', show: adminOrHr }
+        { to: '/community', label: 'Bảng tin nội bộ', show: true },
+        { to: '/dashboard', label: 'Tổng quan cá nhân', show: true },
+        { to: '/chat', label: 'Tin nhắn', show: true }
       ]
     },
     {
       label: 'Chấm công',
       items: [
-        { to: '/device-simulator', label: 'Chấm công nhanh', show: hasRole('ADMIN') || hasRole('EMPLOYEE') || leader || hasRole('HR') },
-        { to: '/devices', label: 'Thiết bị chấm công', show: hasRole('ADMIN') },
-        { to: '/attendances', label: 'Quản lý bảng công', show: adminOrHr || leader },
-        { to: '/my-attendance', label: 'Bảng công của tôi', show: true }
+        { to: '/device-simulator', label: 'Chấm công nhanh', show: true },
+        { to: '/my-attendance', label: 'Bảng công của tôi', show: true },
+        { to: '/attendances', label: 'Bảng công nhân viên', show: canViewTeamScope },
+        { to: '/devices', label: 'Thiết bị chấm công', show: isAdmin }
       ]
     },
     {
       label: 'Đơn từ',
       items: [
-        { to: '/requests', label: 'Tổng quan đơn từ', show: true },
-        { to: '/requests/leave', label: 'Đơn xin nghỉ phép', show: true },
+        { to: '/requests', label: 'Tổng hợp đơn từ', show: true },
+        { to: '/requests/leave', label: 'Đơn nghỉ phép', show: true },
         { to: '/requests/late', label: 'Đơn đi muộn', show: true },
         { to: '/requests/early', label: 'Đơn về sớm', show: true },
         { to: '/requests/outside', label: 'Đơn ra ngoài', show: true },
-        { to: '/requests/missing-check', label: 'Đơn bổ sung chấm công', show: true },
-        { to: '/requests/remote', label: 'Đơn làm remote', show: true },
-        { to: '/requests/overtime', label: 'Đơn làm thêm giờ', show: true },
-        { to: '/requests/shift-change', label: 'Đơn đổi ca', show: true },
-        { to: '/approvals', label: 'Xử lý phê duyệt', show: hasRole('ADMIN') || leader }
+        { to: '/requests/missing-check', label: 'Bổ sung chấm công', show: true },
+        { to: '/requests/remote', label: 'Làm remote', show: true },
+        { to: '/requests/overtime', label: 'Làm thêm giờ', show: true },
+        { to: '/requests/shift-change', label: 'Đổi ca', show: true },
+        { to: '/approvals', label: 'Phê duyệt đơn', show: isAdmin || isLeader }
       ]
     },
     {
-      label: 'Báo cáo',
+      label: 'Nhân sự',
       items: [
-        { to: '/leave-balances', label: 'Quỹ phép nhân viên', show: adminOrHr || leader },
-        { to: '/reports', label: 'Báo cáo bảng công', show: adminOrHr || leader }
+        { to: '/employees', label: 'Danh sách nhân viên', show: canViewTeamScope },
+        { to: '/teams', label: 'Nhóm làm việc', show: canViewTeamScope },
+        { to: '/departments', label: 'Phòng ban', show: isAdmin },
+        { to: '/leave-balances', label: 'Quỹ phép nhân viên', show: canViewTeamScope }
+      ]
+    },
+    {
+      label: 'Cấu hình',
+      items: [
+        { to: '/shifts', label: 'Ca làm việc', show: isAdmin },
+        { to: '/contract-types', label: 'Chính sách hợp đồng', show: isAdmin },
+        { to: '/employee-contracts', label: 'Hợp đồng nhân viên', show: isAdmin },
+        { to: '/holidays', label: 'Ngày nghỉ lễ', show: isAdmin },
+        { to: '/schedules', label: 'Lịch cá nhân đặc biệt', show: isAdmin }
       ]
     }
   ];
 
   return (
     <div className="app-shell horizontal-shell">
-      <header className="main-header">
+      <header className="main-header product-topbar">
         <div className="brand-block">
           <div className="brand">TimeFlow</div>
-          <span>Quản lý chấm công nội bộ</span>
+          <span>Chấm công & cộng tác nội bộ</span>
         </div>
-        <nav className="top-menu">
+        <nav className="top-menu" aria-label="Menu chính">
           {groups.map((group) => {
             const visibleItems = group.items.filter((item) => item.show);
             if (visibleItems.length === 0) return null;
@@ -129,9 +126,10 @@ export function Layout() {
           <button className="secondary logout-button" onClick={logout}>Đăng xuất</button>
         </div>
       </header>
-      <main className="main">
+      <main className="main app-main-content">
         <Outlet />
       </main>
+      <FloatingChatbot />
     </div>
   );
 }

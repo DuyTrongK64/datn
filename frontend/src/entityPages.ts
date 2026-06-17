@@ -38,7 +38,7 @@ export const entityPages: EntityPageConfig[] = [
     { key: 'parentId', label: 'Phòng ban cha', ref: 'departments' },
     { key: 'status', label: 'Trạng thái', type: 'select', options: ['ACTIVE', 'INACTIVE'], required: true, defaultValue: 'ACTIVE' }
   ]},
-  { path: 'teams', title: 'Team', apiPath: '/teams', fields: [
+  { path: 'teams', title: 'Nhóm làm việc', apiPath: '/teams', fields: [
     { key: 'departmentId', label: 'Phòng ban', ref: 'departments', required: true },
     { key: 'code', label: 'Mã team', required: true },
     { key: 'name', label: 'Tên team', required: true },
@@ -49,7 +49,7 @@ export const entityPages: EntityPageConfig[] = [
     defaultCompanyField,
     { key: 'employeeCode', label: 'Mã nhân viên / tài khoản đăng nhập', required: true },
     { key: 'fullName', label: 'Họ tên', required: true },
-    { key: 'role', label: 'Vai trò hệ thống', type: 'select', options: ['EMPLOYEE', 'LEADER', 'HR', 'ADMIN'], required: true, defaultValue: 'EMPLOYEE' },
+    { key: 'role', label: 'Vai trò hệ thống', type: 'select', options: ['EMPLOYEE', 'LEADER', 'ADMIN'], required: true, defaultValue: 'EMPLOYEE' },
     { key: 'email', label: 'Email' },
     { key: 'phone', label: 'SĐT' },
     { key: 'gender', label: 'Giới tính' },
@@ -62,7 +62,7 @@ export const entityPages: EntityPageConfig[] = [
     { key: 'accountStatus', label: 'Trạng thái tài khoản', type: 'select', options: ['ACTIVE', 'LOCKED', 'DISABLED'], required: true, defaultValue: 'ACTIVE' },
     { key: 'initialPassword', label: 'Mật khẩu ban đầu / đặt lại mật khẩu' }
   ]},
-  { path: 'shifts', title: 'Lịch/Ca làm việc', apiPath: '/shifts', pageNote: 'Các trường có dấu * là bắt buộc. Đây là lịch làm chuẩn dùng để gắn vào Loại hợp đồng.', fields: [
+  { path: 'shifts', title: 'Ca làm việc', apiPath: '/shifts', pageNote: 'Các trường có dấu * là bắt buộc. Đây là lịch làm chuẩn dùng để gắn vào Loại hợp đồng.', fields: [
     defaultCompanyField,
     { key: 'code', label: 'Mã lịch', required: true },
     { key: 'name', label: 'Tên lịch', required: true },
@@ -80,7 +80,7 @@ export const entityPages: EntityPageConfig[] = [
     { key: 'remoteAllowed', label: 'Cho remote', type: 'checkbox', defaultValue: false },
     { key: 'status', label: 'Trạng thái', type: 'select', options: ['ACTIVE', 'INACTIVE'], required: true, defaultValue: 'ACTIVE' }
   ]},
-  { path: 'contract-types', title: 'Loại hợp đồng', apiPath: '/contract-types', pageNote: 'Mỗi loại hợp đồng cần chọn Lịch/Ca làm việc mặc định để hệ thống tính công theo giờ chuẩn.', fields: [
+  { path: 'contract-types', title: 'Chính sách hợp đồng', apiPath: '/contract-types', pageNote: 'Mỗi loại hợp đồng cần chọn Lịch/Ca làm việc mặc định để hệ thống tính công theo giờ chuẩn.', fields: [
     { key: 'code', label: 'Mã loại hợp đồng', required: true },
     { key: 'name', label: 'Tên loại hợp đồng', required: true },
     { key: 'description', label: 'Mô tả', type: 'textarea' },

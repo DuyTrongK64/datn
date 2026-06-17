@@ -6,8 +6,6 @@ spring:
     url: jdbc:postgresql://localhost:5432/attendance_db
     username: attendance_user
     password: attendance_pass
-
-
   jpa:
     hibernate:
       ddl-auto: update
@@ -21,13 +19,13 @@ spring:
 app:
   security:
     jwt:
+      # Secret tối thiểu 32 ký tự. Trong môi trường thật, đưa vào biến môi trường.
       secret: "attendance-management-secret-key-for-graduation-project-2026"
       access-token-expiration-minutes: 30
       refresh-token-expiration-days: 14
     login:
       max-failed-attempts: 5
       lock-duration-minutes: 15
-
   cors:
     allowed-origins: "http://localhost:5173"
 

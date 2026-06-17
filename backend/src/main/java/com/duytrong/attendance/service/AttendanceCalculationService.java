@@ -51,9 +51,8 @@ public class AttendanceCalculationService {
         daily.setWorkDate(workDate);
 
         Optional<EmployeeSchedule> scheduleOpt = employeeScheduleRepository.findByEmployeeIdAndWorkDate(employeeId, workDate);
-        if(scheduleOpt.isPresent()){
-            EmployeeSchedule schedule = scheduleOpt.get();
-            daily.setScheduleId(schedule.getId());
+        if (scheduleOpt.isPresent()) {
+            daily.setScheduleId(scheduleOpt.get().getId());
         }
 
         Shift shift = resolveShift(employeeId, workDate, scheduleOpt).orElse(null);
@@ -156,8 +155,7 @@ public class AttendanceCalculationService {
                 Optional<EmployeeSchedule> scheduleOpt = employeeScheduleRepository.findByEmployeeIdAndWorkDate(employeeId, date);
 
                 if (scheduleOpt.isPresent()) {
-                    EmployeeSchedule schedule = scheduleOpt.get();
-                    row.setScheduleId(schedule.getId());
+                    row.setScheduleId(scheduleOpt.get().getId());
                 }
                 Shift shift = resolveShift(employeeId, date, scheduleOpt).orElse(null);
                 applyPlannedShift(row, shift);

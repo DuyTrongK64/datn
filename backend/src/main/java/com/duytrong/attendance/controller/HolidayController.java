@@ -9,7 +9,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/holidays")
-@PreAuthorize("hasAnyRole('ADMIN','HR')")
+@PreAuthorize("hasRole('ADMIN')")
 public class HolidayController extends SimpleCrudController<Holiday> {
     public HolidayController(HolidayRepository repository) {
         super(repository);

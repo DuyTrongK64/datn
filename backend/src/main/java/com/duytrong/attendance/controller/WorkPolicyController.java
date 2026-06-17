@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/work-policies")
-@PreAuthorize("hasAnyRole('ADMIN','HR')")
+@PreAuthorize("hasRole('ADMIN')")
 public class WorkPolicyController extends SimpleCrudController<WorkPolicy> {
     public WorkPolicyController(WorkPolicyRepository repository) {
         super(repository);

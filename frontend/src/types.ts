@@ -210,3 +210,47 @@ export type LeaveBalance = BaseEntity & {
   usedDays?: number;
   remainingDays?: number;
 };
+
+
+export type CommunityComment = {
+  id: string;
+  postId: string;
+  employeeId: string;
+  employeeCode?: string;
+  employeeName?: string;
+  content: string;
+  createdAt: string;
+};
+
+export type CommunityPost = {
+  id: string;
+  employeeId: string;
+  employeeCode?: string;
+  employeeName?: string;
+  departmentName?: string;
+  content: string;
+  createdAt: string;
+  commentCount: number;
+  comments: CommunityComment[];
+};
+
+export type ChatMessage = {
+  id: string;
+  senderEmployeeId: string;
+  senderCode?: string;
+  senderName?: string;
+  receiverEmployeeId: string;
+  receiverCode?: string;
+  receiverName?: string;
+  content: string;
+  createdAt: string;
+  mine: boolean;
+};
+
+export type Conversation = {
+  employeeId: string;
+  employeeCode?: string;
+  employeeName?: string;
+  lastMessage?: string;
+  lastMessageAt?: string;
+};

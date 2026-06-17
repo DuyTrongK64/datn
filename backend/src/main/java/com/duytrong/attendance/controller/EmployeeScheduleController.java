@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/schedules")
-@PreAuthorize("hasAnyRole('ADMIN','HR','LEADER')")
+@PreAuthorize("hasAnyRole('ADMIN','LEADER')")
 public class EmployeeScheduleController extends SimpleCrudController<EmployeeSchedule> {
     public EmployeeScheduleController(EmployeeScheduleRepository repository) {
         super(repository);

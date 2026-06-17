@@ -6,7 +6,7 @@ import { EmployeeSearchFilter, type EmployeeSearchValue, filterEmployeesBySearch
 import { codeName } from '../utils/format';
 import { roleLabel, viLabel } from '../utils/labels';
 
-const roleOptions = ['ADMIN', 'HR', 'LEADER', 'EMPLOYEE'];
+const roleOptions = ['ADMIN', 'LEADER', 'EMPLOYEE'];
 
 export function UserPage() {
   const queryClient = useQueryClient();

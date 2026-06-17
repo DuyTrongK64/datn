@@ -30,10 +30,20 @@ function dayNumber(value: string) {
   return Number(value.slice(8, 10));
 }
 
+function matchesEmployeeKeyword(row: { employeeCode?: string; employeeName?: string; fullName?: string; email?: string; phone?: string }, keyword: string) {
+  const normalized = keyword.trim().toLowerCase();
+  if (!normalized) return true;
+  return [row.employeeCode, row.employeeName, row.fullName, row.email, row.phone]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+    .includes(normalized);
+}
+
 export function AttendancePage({ onlyMe = false }: { onlyMe?: boolean }) {
   const queryClient = useQueryClient();
   const { user, hasRole } = useAuth();
-  const adminOrHr = hasRole('ADMIN', 'HR');
+  const isAdmin = hasRole('ADMIN');
   const leader = hasRole('LEADER');
   const browserToday = dateString(new Date());
   const browserMonth = monthString(new Date());
@@ -41,13 +51,14 @@ export function AttendancePage({ onlyMe = false }: { onlyMe?: boolean }) {
   const [to, setTo] = useState(browserToday);
   const [month, setMonth] = useState(browserMonth);
   const [employeeId, setEmployeeId] = useState('');
+  const [employeeSearch, setEmployeeSearch] = useState('');
   const [teamId, setTeamId] = useState('');
   const [detailEmployee, setDetailEmployee] = useState<AttendanceSummary | null>(null);
   const [detailMonth, setDetailMonth] = useState(browserMonth);
 
-  const { data: employees = [] } = useQuery({ queryKey: ['employees'], queryFn: async () => (await http.get<Employee[]>('/employees')).data, enabled: !onlyMe && (adminOrHr || leader) });
-  const { data: teams = [] } = useQuery({ queryKey: ['teams'], queryFn: async () => (await http.get<Team[]>('/teams')).data, enabled: !onlyMe && (adminOrHr || leader) });
-  const { data: teamMembers = [] } = useQuery({ queryKey: ['team-members'], queryFn: async () => (await http.get<TeamMember[]>('/team-members')).data, enabled: !onlyMe && (adminOrHr || leader) });
+  const { data: employees = [] } = useQuery({ queryKey: ['employees'], queryFn: async () => (await http.get<Employee[]>('/employees')).data, enabled: !onlyMe && (isAdmin || leader) });
+  const { data: teams = [] } = useQuery({ queryKey: ['teams'], queryFn: async () => (await http.get<Team[]>('/teams')).data, enabled: !onlyMe && (isAdmin || leader) });
+  const { data: teamMembers = [] } = useQuery({ queryKey: ['team-members'], queryFn: async () => (await http.get<TeamMember[]>('/team-members')).data, enabled: !onlyMe && (isAdmin || leader) });
   const { data: timeSetting } = useQuery({ queryKey: ['system-time'], queryFn: async () => (await http.get<SystemTimeSetting>('/system-time')).data });
   const today = timeSetting?.effectiveDate || timeSetting?.effectiveNow?.slice(0, 10) || browserToday;
   const currentMonth = today.slice(0, 7);
@@ -63,34 +74,43 @@ export function AttendancePage({ onlyMe = false }: { onlyMe?: boolean }) {
   }, [browserMonth, browserToday, currentMonth, detailMonth, from, month, timeSetting?.effectiveDate, timeSetting?.effectiveNow, to, today]);
 
   const leaderTeamIds = useMemo(() => {
-    if (!leader || !user?.employeeId) return [];
-    return teams.filter((team) => String(team.leaderEmployeeId) === String(user.employeeId)).map((team) => String(team.id));
-  }, [leader, teams, user?.employeeId]);
+    if (!leader) return [];
+    return teams.map((team) => String(team.id));
+  }, [leader, teams]);
 
   const visibleTeams = useMemo(() => {
-    if (adminOrHr) return teams;
-    if (leader) return teams.filter((team) => leaderTeamIds.includes(String(team.id)));
+    if (isAdmin) return teams;
+    if (leader) return teams;
     return [];
-  }, [adminOrHr, leader, teams, leaderTeamIds]);
+  }, [isAdmin, leader, teams]);
 
   useEffect(() => {
-    if (!onlyMe && leader && !adminOrHr && !teamId && visibleTeams.length > 0) {
+    if (!onlyMe && leader && !isAdmin && !teamId && visibleTeams.length > 0) {
       setTeamId(String(visibleTeams[0].id));
     }
-  }, [adminOrHr, leader, onlyMe, teamId, visibleTeams]);
+  }, [isAdmin, leader, onlyMe, teamId, visibleTeams]);
 
   const visibleEmployees = useMemo(() => {
     if (onlyMe) return [];
     let ids: string[] | null = null;
     if (teamId) {
       ids = teamMembers.filter((member) => String(member.teamId) === teamId).map((member) => String(member.employeeId));
-    } else if (leader && leaderTeamIds.length > 0 && !adminOrHr) {
+    } else if (leader && leaderTeamIds.length > 0 && !isAdmin) {
       ids = teamMembers.filter((member) => leaderTeamIds.includes(String(member.teamId))).map((member) => String(member.employeeId));
     }
     if (!ids) return employees;
     const idSet = new Set(ids);
     return employees.filter((employee) => idSet.has(String(employee.id)));
-  }, [adminOrHr, employees, leader, leaderTeamIds, onlyMe, teamId, teamMembers]);
+  }, [isAdmin, employees, leader, leaderTeamIds, onlyMe, teamId, teamMembers]);
+
+  const visibleEmployeesForSelect = useMemo(() => {
+    return visibleEmployees.filter((employee) => matchesEmployeeKeyword({
+      employeeCode: employee.employeeCode,
+      fullName: employee.fullName,
+      email: employee.email,
+      phone: employee.phone
+    }, employeeSearch));
+  }, [employeeSearch, visibleEmployees]);
 
   const personalEndpoint = useMemo(() => {
     if (!onlyMe || !user?.employeeId) return '';
@@ -165,6 +185,9 @@ export function AttendancePage({ onlyMe = false }: { onlyMe?: boolean }) {
     queryFn: async () => (await http.get<AttendanceSummary[]>(detailSummaryEndpoint)).data,
     enabled: Boolean(detailSummaryEndpoint)
   });
+
+  const filteredDailyRows = useMemo(() => dailyRows.filter((row) => matchesEmployeeKeyword(row, employeeSearch)), [dailyRows, employeeSearch]);
+  const filteredSummaryRows = useMemo(() => summaryRows.filter((row) => matchesEmployeeKeyword(row, employeeSearch)), [summaryRows, employeeSearch]);
 
   const recalcMutation = useMutation({
     mutationFn: async () => (await http.post('/attendances/recalculate-range', {
@@ -242,24 +265,25 @@ export function AttendancePage({ onlyMe = false }: { onlyMe?: boolean }) {
               <label>Đến ngày<input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></label>
             </>
           )}
-          {adminOrHr && <label>Team<select value={teamId} onChange={(e) => { setTeamId(e.target.value); setEmployeeId(''); }}>
+          {isAdmin && <label>Team<select value={teamId} onChange={(e) => { setTeamId(e.target.value); setEmployeeId(''); }}>
             <option value="">Tất cả team</option>
             {visibleTeams.map((team) => <option key={String(team.id)} value={String(team.id)}>{codeName(String(team.code ?? ''), String(team.name ?? ''))}</option>)}
           </select></label>}
-          {(adminOrHr || leader) && <label>Nhân viên<select value={employeeId} onChange={(e) => setEmployeeId(e.target.value)}>
-            <option value="">{leader && !adminOrHr ? 'Tất cả nhân viên trong team' : 'Tất cả nhân viên'}</option>
-            {visibleEmployees.map((employee) => <option key={String(employee.id)} value={String(employee.id)}>{codeName(String(employee.employeeCode ?? ''), String(employee.fullName ?? ''))}</option>)}
+          {(isAdmin || leader) && <label>Tìm nhân viên<input value={employeeSearch} onChange={(e) => setEmployeeSearch(e.target.value)} placeholder="Nhập mã hoặc tên" /></label>}
+          {(isAdmin || leader) && <label>Nhân viên<select value={employeeId} onChange={(e) => setEmployeeId(e.target.value)}>
+            <option value="">{leader && !isAdmin ? 'Tất cả nhân viên trong team' : 'Tất cả nhân viên'}</option>
+            {visibleEmployeesForSelect.map((employee) => <option key={String(employee.id)} value={String(employee.id)}>{codeName(String(employee.employeeCode ?? ''), String(employee.fullName ?? ''))}</option>)}
           </select></label>}
-          {adminOrHr && <button type="button" onClick={() => recalcMutation.mutate()} disabled={recalcMutation.isPending}>
+          {isAdmin && <button type="button" onClick={() => recalcMutation.mutate()} disabled={recalcMutation.isPending}>
             {recalcMutation.isPending ? 'Đang tính...' : 'Tính công thủ công'}
           </button>}
         </div>
       </div>
 
       {rangeMode ? (
-        <SummaryTable rows={summaryRows} loading={summaryLoading} onOpen={openEmployeeMonth} />
+        <SummaryTable rows={filteredSummaryRows} loading={summaryLoading} onOpen={openEmployeeMonth} />
       ) : (
-        <DailyTable rows={dailyRows} loading={dailyLoading} />
+        <DailyTable rows={filteredDailyRows} loading={dailyLoading} />
       )}
 
       {detailEmployee && <div className="modal-backdrop" onClick={() => setDetailEmployee(null)}>

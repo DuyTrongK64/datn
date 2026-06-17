@@ -46,7 +46,6 @@ public class DataInitializer {
                                LeaveBalanceRepository leaveBalanceRepository) {
         return args -> {
             Role adminRole = ensureRole(roleRepository, "ADMIN", "Quản trị hệ thống");
-            Role hrRole = ensureRole(roleRepository, "HR", "Nhân sự");
             Role leaderRole = ensureRole(roleRepository, "LEADER", "Trưởng nhóm");
             Role employeeRole = ensureRole(roleRepository, "EMPLOYEE", "Nhân viên");
             ensureRole(roleRepository, "DEVICE", "Thiết bị chấm công");
@@ -54,10 +53,9 @@ public class DataInitializer {
             Company company = ensureCompany(companyRepository);
 
             Department devDepartment = ensureDepartment(departmentRepository, company.getId(), "DEV", "Phòng Phát triển phần mềm");
-            Department hrDepartment = ensureDepartment(departmentRepository, company.getId(), "HR", "Phòng Nhân sự");
+            Department adminDepartment = ensureDepartment(departmentRepository, company.getId(), "ADMIN", "Phòng Hành chính");
 
-            Employee adminEmp = ensureEmployee(employeeRepository, company.getId(), hrDepartment.getId(), "ADM001", "Admin Demo", "admin@demo.com");
-            Employee hrEmp = ensureEmployee(employeeRepository, company.getId(), hrDepartment.getId(), "HR001", "HR Demo", "hr@demo.com");
+            Employee adminEmp = ensureEmployee(employeeRepository, company.getId(), adminDepartment.getId(), "ADM001", "Admin Demo", "admin@demo.com");
             Employee leaderEmp = ensureEmployee(employeeRepository, company.getId(), devDepartment.getId(), "LEA001", "Leader Demo", "leader@demo.com");
             Employee employee = ensureEmployee(employeeRepository, company.getId(), devDepartment.getId(), "EMP001", "Employee Demo", "employee@demo.com");
             Employee employee2 = ensureEmployee(employeeRepository, company.getId(), devDepartment.getId(), "EMP002", "Employee Demo 2", "employee2@demo.com");
@@ -69,7 +67,6 @@ public class DataInitializer {
             ensureTeamMember(teamMemberRepository, teamA, employee2, false);
 
             ensureDemoUser(userRepository, userRoleRepository, adminRole, "admin123", "admin@demo.com", "Admin Demo", adminEmp, List.of(adminRole));
-            ensureDemoUser(userRepository, userRoleRepository, hrRole, "hr123", "hr@demo.com", "HR Demo", hrEmp, List.of(hrRole));
             ensureDemoUser(userRepository, userRoleRepository, leaderRole, "leader123", "leader@demo.com", "Leader Demo", leaderEmp, List.of(leaderRole));
             ensureDemoUser(userRepository, userRoleRepository, employeeRole, "employee123", "employee@demo.com", "Employee Demo", employee, List.of(employeeRole));
             ensureDemoUser(userRepository, userRoleRepository, employeeRole, "employee123", "employee2@demo.com", "Employee Demo 2", employee2, List.of(employeeRole));
@@ -92,12 +89,11 @@ public class DataInitializer {
             ensureWorkPolicy(workPolicyRepository, fullTime.getId());
 
             ensureEmployeeContract(employeeContractRepository, adminEmp, fullTime);
-            ensureEmployeeContract(employeeContractRepository, hrEmp, fullTime);
             ensureEmployeeContract(employeeContractRepository, leaderEmp, fullTime);
             ensureEmployeeContract(employeeContractRepository, employee, fullTime);
             ensureEmployeeContract(employeeContractRepository, employee2, fullTime);
 
-            ensureSchedules(scheduleRepository, List.of(adminEmp, hrEmp, leaderEmp, employee, employee2), officeShift.getId());
+            ensureSchedules(scheduleRepository, List.of(adminEmp, leaderEmp, employee, employee2), officeShift.getId());
 
             ensureDevice(deviceRepository, company.getId());
 
@@ -114,7 +110,6 @@ public class DataInitializer {
 
             LeaveType annualLeave = ensureLeaveType(leaveTypeRepository, "ANNUAL_LEAVE", "Nghỉ phép năm", true, 12.0);
             ensureLeaveBalance(leaveBalanceRepository, adminEmp, annualLeave);
-            ensureLeaveBalance(leaveBalanceRepository, hrEmp, annualLeave);
             ensureLeaveBalance(leaveBalanceRepository, leaderEmp, annualLeave);
             ensureLeaveBalance(leaveBalanceRepository, employee, annualLeave);
             ensureLeaveBalance(leaveBalanceRepository, employee2, annualLeave);

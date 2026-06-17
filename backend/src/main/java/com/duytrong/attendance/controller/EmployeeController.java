@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/employees")
-@PreAuthorize("hasAnyRole('ADMIN','HR','LEADER')")
+@PreAuthorize("hasAnyRole('ADMIN','LEADER')")
 public class EmployeeController {
     private final EmployeeRepository employeeRepository;
     private final CompanyRepository companyRepository;
@@ -66,7 +66,7 @@ public class EmployeeController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    @PreAuthorize("hasRole('ADMIN')")
     @Transactional
     public EmployeeDtos.EmployeeResponse create(@RequestBody EmployeeDtos.EmployeeUpsertRequest request) {
         String employeeCode = normalizeEmployeeCode(request.employeeCode());
@@ -90,7 +90,7 @@ public class EmployeeController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    @PreAuthorize("hasRole('ADMIN')")
     @Transactional
     public EmployeeDtos.EmployeeResponse update(@PathVariable UUID id, @RequestBody EmployeeDtos.EmployeeUpsertRequest request) {
         Employee employee = employeeRepository.findById(id)
@@ -101,7 +101,9 @@ public class EmployeeController {
         }
         employeeRepository.findByEmployeeCodeIgnoreCase(nextCode)
                 .filter(other -> !other.getId().equals(id))
-                .ifPresent(other -> { throw new BusinessException("Mã nhân viên đã tồn tại"); });
+                .ifPresent(other -> {
+                    throw new BusinessException("Mã nhân viên đã tồn tại");
+                });
 
         applyEmployeeFields(employee, request, nextCode);
         employee = employeeRepository.save(employee);
@@ -112,7 +114,7 @@ public class EmployeeController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    @PreAuthorize("hasRole('ADMIN')")
     @Transactional
     public void delete(@PathVariable UUID id) {
         Employee employee = employeeRepository.findById(id)
@@ -141,45 +143,58 @@ public class EmployeeController {
 
     private void createOrUpdateLoginAccount(Employee employee, EmployeeDtos.EmployeeUpsertRequest request, boolean creatingEmployee) {
         List<AppUser> linkedUsers = userRepository.findByEmployeeId(employee.getId());
-        AppUser user = linkedUsers.stream()
+        Optional<AppUser> userOpt = linkedUsers.stream()
                 .filter(item -> employee.getEmployeeCode().equalsIgnoreCase(item.getUsername()))
-                .findFirst()
-                .orElseGet(() -> linkedUsers.isEmpty() ? new AppUser() : linkedUsers.get(0));
+                .findFirst();
 
-        Optional<AppUser> existingUserOpt = userRepository.findByUsernameIgnoreCase(employee.getEmployeeCode());
-
-        if (existingUserOpt.isPresent()) {
-            AppUser existing = existingUserOpt.get();
-
-            if (user.getId() == null || !existing.getId().equals(user.getId())) {
-                throw new BusinessException("Mã nhân viên đã được dùng làm tài khoản đăng nhập");
-            }
+        AppUser user;
+        if (userOpt.isPresent()) {
+            user = userOpt.get();
+        } else if (linkedUsers.size() == 1) {
+            user = linkedUsers.getFirst();
+        } else {
+            user = new AppUser();
         }
+
+        // ✅ Fix 1: copy sang biến final để dùng trong lambda
+        // ✅ Fix 2: dùng Objects.equals() tránh NPE
+        final AppUser existingUser = user;
+        userRepository.findByUsernameIgnoreCase(employee.getEmployeeCode())
+                .filter(existing -> !Objects.equals(existing.getId(), existingUser.getId()))
+                .ifPresent(existing -> {
+                    throw new BusinessException("Mã nhân viên đã được dùng làm tài khoản đăng nhập");
+                });
+
         user.setUsername(employee.getEmployeeCode());
         user.setEmail(employee.getEmail());
         user.setFullName(employee.getFullName());
         user.setEmployeeId(employee.getId());
         user.setStatus(request.accountStatus() == null ? UserStatus.ACTIVE : request.accountStatus());
         if (user.getFailedLoginCount() == null) user.setFailedLoginCount(0);
+
         String password = firstNonBlank(request.initialPassword(), request.defaultPassword());
         if (user.getId() == null || creatingEmployee || password != null) {
             user.setPasswordHash(passwordEncoder.encode(password == null ? "123456" : password));
         }
-        user = userRepository.save(user);
+
+        user = userRepository.save(user); // ✅ user vẫn có thể reassign bình thường sau lambda
         updateUserRoles(user.getId(), rolesFromRequest(request));
     }
 
     private List<String> rolesFromRequest(EmployeeDtos.EmployeeUpsertRequest request) {
+        List<String> allowed = List.of("ADMIN", "LEADER", "EMPLOYEE");
         if (request.roles() != null && !request.roles().isEmpty()) {
-            return request.roles().stream()
+            List<String> roles = request.roles().stream()
                     .filter(Objects::nonNull)
                     .map(String::trim)
                     .filter(item -> !item.isBlank())
+                    .filter(allowed::contains)
                     .distinct()
                     .toList();
+            return roles.isEmpty() ? List.of("EMPLOYEE") : roles;
         }
         String role = trimToNull(request.role());
-        if (role != null) return List.of(role);
+        if (role != null && allowed.contains(role)) return List.of(role);
         return List.of("EMPLOYEE");
     }
 

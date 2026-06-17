@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../state/AuthContext';
 
 export function LoginPage() {
-  const [username, setUsername] = useState('ADM001');
+  const [username, setUsername] = useState('NV001');
   const [password, setPassword] = useState('admin123');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -15,10 +15,10 @@ export function LoginPage() {
     setError('');
     setSubmitting(true);
     try {
-      await login(username, password);
-      navigate('/dashboard');
+      await login(username.trim(), password);
+      navigate('/community');
     } catch (err) {
-      setError('Đăng nhập thất bại. Kiểm tra lại mã nhân viên/mật khẩu.');
+      setError('Đăng nhập thất bại. Kiểm tra lại mã nhân viên/mật khẩu hoặc CORS backend.');
     } finally {
       setSubmitting(false);
     }
@@ -27,8 +27,8 @@ export function LoginPage() {
   return (
     <div className="login-page">
       <form className="login-card" onSubmit={submit}>
-        <h1>Attendance Management</h1>
-        <p>Đăng nhập hệ thống chấm công</p>
+        <h1>TimeFlow</h1>
+        <p>Đăng nhập hệ thống chấm công nội bộ</p>
         {error && <div className="alert error">{error}</div>}
         <label>Mã nhân viên</label>
         <input value={username} onChange={(e) => setUsername(e.target.value)} />
@@ -36,7 +36,7 @@ export function LoginPage() {
         <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
         <button disabled={submitting}>{submitting ? 'Đang đăng nhập...' : 'Đăng nhập'}</button>
         <div className="hint">
-          Demo: ADM001/admin123, HR001/hr123, LEA001/leader123, EMP001/employee123
+          Mock data v3: NV001/admin123, NV002/leader123, NV003/employee123
         </div>
       </form>
     </div>

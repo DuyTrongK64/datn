@@ -2,6 +2,7 @@ package com.duytrong.attendance.controller;
 
 import com.duytrong.attendance.domain.*;
 import com.duytrong.attendance.repository.*;
+import com.duytrong.attendance.service.AccessControlService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -10,6 +11,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/lookups")
@@ -24,6 +28,7 @@ public class LookupController {
     private final ShiftRepository shiftRepository;
     private final LeaveTypeRepository leaveTypeRepository;
     private final RequestTypeRepository requestTypeRepository;
+    private final AccessControlService accessControlService;
 
     @GetMapping("/companies")
     public List<Map<String, Object>> companies() {
@@ -32,12 +37,20 @@ public class LookupController {
 
     @GetMapping("/departments")
     public List<Map<String, Object>> departments() {
+        if (accessControlService.isLeader() && !accessControlService.canSeeAllEmployees()) {
+            Set<UUID> departmentIds = accessControlService.visibleTeamsForCurrentUser().stream()
+                    .map(Team::getDepartmentId)
+                    .collect(Collectors.toSet());
+            return departmentRepository.findAllById(departmentIds).stream()
+                    .map(d -> item(d.getId(), d.getCode(), d.getName()))
+                    .toList();
+        }
         return departmentRepository.findAll().stream().map(d -> item(d.getId(), d.getCode(), d.getName())).toList();
     }
 
     @GetMapping("/teams")
     public List<Map<String, Object>> teams() {
-        return teamRepository.findAll().stream().map(t -> {
+        return accessControlService.visibleTeamsForCurrentUser().stream().map(t -> {
             Map<String, Object> item = item(t.getId(), t.getCode(), t.getName());
             item.put("departmentId", t.getDepartmentId());
             item.put("leaderEmployeeId", t.getLeaderEmployeeId());
@@ -47,10 +60,12 @@ public class LookupController {
 
     @GetMapping("/employees")
     public List<Map<String, Object>> employees() {
-        return employeeRepository.findAll().stream().map(e -> {
+        return accessControlService.visibleEmployeesForCurrentUser().stream().map(e -> {
             Map<String, Object> item = item(e.getId(), e.getEmployeeCode(), e.getFullName());
             item.put("employeeCode", e.getEmployeeCode());
             item.put("fullName", e.getFullName());
+            item.put("email", e.getEmail());
+            item.put("phone", e.getPhone());
             item.put("departmentId", e.getDepartmentId());
             return item;
         }).toList();

@@ -8,6 +8,7 @@ type AuthContextValue = {
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
   hasRole: (...roles: string[]) => boolean;
+  setCurrentUser: (next: UserProfile) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -49,7 +50,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return user?.roles.some((role) => roles.includes(role)) ?? false;
   }
 
-  const value = useMemo(() => ({ user, loading, login, logout, hasRole }), [user, loading]);
+  function setCurrentUser(next: UserProfile) {
+    setUser(next);
+  }
+
+  const value = useMemo(() => ({ user, loading, login, logout, hasRole, setCurrentUser }), [user, loading]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

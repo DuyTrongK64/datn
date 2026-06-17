@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/leave-types")
-@PreAuthorize("hasAnyRole('ADMIN','HR')")
+@PreAuthorize("hasRole('ADMIN')")
 public class LeaveTypeController extends SimpleCrudController<LeaveType> {
     public LeaveTypeController(LeaveTypeRepository repository) {
         super(repository);

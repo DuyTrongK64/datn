@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/shift-breaks")
-@PreAuthorize("hasAnyRole('ADMIN','HR')")
+@PreAuthorize("hasRole('ADMIN')")
 public class ShiftBreakController extends SimpleCrudController<ShiftBreak> {
     public ShiftBreakController(ShiftBreakRepository repository) {
         super(repository);

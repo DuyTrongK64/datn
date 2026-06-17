@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/departments")
-@PreAuthorize("hasAnyRole('ADMIN','HR','LEADER')")
+@PreAuthorize("hasAnyRole('ADMIN','LEADER')")
 public class DepartmentController extends SimpleCrudController<Department> {
     public DepartmentController(DepartmentRepository repository) {
         super(repository);

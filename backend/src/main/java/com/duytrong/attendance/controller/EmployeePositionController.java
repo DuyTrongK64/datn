@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/employee-positions")
-@PreAuthorize("hasAnyRole('ADMIN','HR')")
+@PreAuthorize("hasRole('ADMIN')")
 public class EmployeePositionController extends SimpleCrudController<EmployeePosition> {
     public EmployeePositionController(EmployeePositionRepository repository) {
         super(repository);

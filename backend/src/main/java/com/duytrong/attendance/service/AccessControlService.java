@@ -51,16 +51,12 @@ public class AccessControlService {
         return hasRole("ADMIN");
     }
 
-    public boolean isHr() {
-        return hasRole("HR");
-    }
-
     public boolean isLeader() {
         return hasRole("LEADER");
     }
 
     public boolean canSeeAllEmployees() {
-        return isAdmin() || isHr();
+        return isAdmin();
     }
 
     public List<Team> visibleTeamsForCurrentUser() {
@@ -127,9 +123,7 @@ public class AccessControlService {
     }
 
     public void requireAdminOrHrWrite() {
-        if (!isAdmin() && !isHr()) {
-            throw new BusinessException("Bạn chỉ có quyền xem dữ liệu, không được thêm/sửa/xóa");
-        }
+        requireAdminWrite();
     }
 
     public void requireAdminWrite() {
@@ -147,7 +141,6 @@ public class AccessControlService {
     public String currentApproverRole() {
         if (isAdmin()) return "ADMIN";
         if (isLeader()) return "LEADER";
-        if (isHr()) return "HR";
         return "EMPLOYEE";
     }
 }

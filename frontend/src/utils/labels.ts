@@ -1,6 +1,5 @@
 const VI_LABELS: Record<string, string> = {
   ADMIN: 'Quản trị viên',
-  HR: 'Nhân sự',
   LEADER: 'Trưởng nhóm',
   EMPLOYEE: 'Nhân viên',
   DEVICE: 'Thiết bị',

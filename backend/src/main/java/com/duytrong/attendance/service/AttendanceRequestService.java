@@ -30,16 +30,33 @@ public class AttendanceRequestService {
     private final LeaveTransactionRepository leaveTransactionRepository;
     private final AttendanceCalculationService calculationService;
     private final SystemTimeService systemTimeService;
+    private final AccessControlService accessControlService;
 
     public List<AttendanceRequest> list(String status) {
+        List<AttendanceRequest> rows;
         if (status != null && !status.isBlank()) {
-            return requestRepository.findByStatus(RequestStatus.valueOf(status));
+            rows = requestRepository.findByStatus(RequestStatus.valueOf(status));
+        } else {
+            rows = requestRepository.findAll();
         }
-        return requestRepository.findAll();
+        if (accessControlService.canSeeAllEmployees()) return rows;
+        if (accessControlService.isLeader()) {
+            List<UUID> employeeIds = accessControlService.leaderEmployeeIds();
+            return rows.stream().filter(request -> employeeIds.contains(request.getEmployeeId())).toList();
+        }
+        UUID currentEmployeeId = accessControlService.currentEmployeeId();
+        return rows.stream().filter(request -> request.getEmployeeId() != null && request.getEmployeeId().equals(currentEmployeeId)).toList();
     }
 
     @Transactional
     public AttendanceRequest create(AttendanceRequestDtos.CreateRequest request) {
+        UUID targetEmployeeId = request.employeeId();
+        if (!accessControlService.canSeeAllEmployees()) {
+            UUID currentEmployeeId = accessControlService.currentEmployeeId();
+            if (currentEmployeeId == null || targetEmployeeId == null || !currentEmployeeId.equals(targetEmployeeId)) {
+                throw new BusinessException("Bạn chỉ được tạo đơn cho chính mình");
+            }
+        }
         RequestType type = requestTypeRepository.findByCode(request.requestTypeCode())
                 .orElseThrow(() -> new BusinessException("Loại đơn không tồn tại"));
         AttendanceRequest entity = new AttendanceRequest();
@@ -55,9 +72,12 @@ public class AttendanceRequestService {
     }
 
     @Transactional
-    public AttendanceRequest approve(UUID requestId, UUID approverEmployeeId, String approverRole, String comment) {
+    public AttendanceRequest approve(UUID requestId, String comment) {
         AttendanceRequest request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new BusinessException("Không tìm thấy đơn"));
+        accessControlService.requireCanApproveRequestForEmployee(request.getEmployeeId());
+        UUID approverEmployeeId = accessControlService.currentEmployeeId();
+        String approverRole = accessControlService.currentApproverRole();
         if (request.getStatus() != RequestStatus.PENDING) {
             throw new BusinessException("Chỉ được duyệt đơn đang chờ duyệt");
         }
@@ -80,9 +100,12 @@ public class AttendanceRequestService {
     }
 
     @Transactional
-    public AttendanceRequest reject(UUID requestId, UUID approverEmployeeId, String approverRole, String comment) {
+    public AttendanceRequest reject(UUID requestId, String comment) {
         AttendanceRequest request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new BusinessException("Không tìm thấy đơn"));
+        accessControlService.requireCanApproveRequestForEmployee(request.getEmployeeId());
+        UUID approverEmployeeId = accessControlService.currentEmployeeId();
+        String approverRole = accessControlService.currentApproverRole();
         if (request.getStatus() != RequestStatus.PENDING) {
             throw new BusinessException("Chỉ được từ chối đơn đang chờ duyệt");
         }

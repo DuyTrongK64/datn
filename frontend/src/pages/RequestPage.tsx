@@ -78,7 +78,9 @@ function statusLabel(status: string) {
 
 export function RequestPage({ approvalMode = false, initialType }: RequestPageProps) {
   const { user, hasRole } = useAuth();
-  const adminOrHrOrLeader = hasRole('ADMIN', 'HR', 'LEADER');
+  const managedViewer = hasRole('ADMIN', 'LEADER');
+  const canCreateForOthers = hasRole('ADMIN');
+  const canApproveRequests = hasRole('ADMIN', 'LEADER');
   const refs = useReferences(['employees', 'requestTypes']);
   const queryClient = useQueryClient();
   const defaultType = initialType || 'LEAVE_REQUEST';
@@ -121,19 +123,19 @@ export function RequestPage({ approvalMode = false, initialType }: RequestPagePr
   const { data: employees = [] } = useQuery({
     queryKey: ['employees'],
     queryFn: async () => (await http.get<Employee[]>('/employees')).data,
-    enabled: adminOrHrOrLeader
+    enabled: managedViewer
   });
 
   const { data: teams = [] } = useQuery({
     queryKey: ['teams'],
     queryFn: async () => (await http.get<Team[]>('/teams')).data,
-    enabled: adminOrHrOrLeader
+    enabled: managedViewer
   });
 
   const { data: teamMembers = [] } = useQuery({
     queryKey: ['team-members'],
     queryFn: async () => (await http.get<TeamMember[]>('/team-members')).data,
-    enabled: adminOrHrOrLeader
+    enabled: managedViewer
   });
 
   const filteredEmployees = useMemo(
@@ -159,8 +161,8 @@ export function RequestPage({ approvalMode = false, initialType }: RequestPagePr
 
   const displayedRequests = useMemo(() => {
     return requests.filter((request) => {
-      if (!adminOrHrOrLeader && String(request.employeeId) !== String(user?.employeeId)) return false;
-      if (adminOrHrOrLeader) {
+      if (!managedViewer && String(request.employeeId) !== String(user?.employeeId)) return false;
+      if (managedViewer) {
         if (employeeFilter.employeeId && String(request.employeeId) !== String(employeeFilter.employeeId)) return false;
         if (!employeeFilter.employeeId && (employeeFilter.teamId || employeeFilter.keyword.trim()) && !filteredEmployeeIds.has(String(request.employeeId))) return false;
       }
@@ -170,7 +172,7 @@ export function RequestPage({ approvalMode = false, initialType }: RequestPagePr
       if (typeFilter && typeCode !== typeFilter) return false;
       return true;
     });
-  }, [adminOrHrOrLeader, approvalMode, employeeFilter.employeeId, employeeFilter.keyword, employeeFilter.teamId, filteredEmployeeIds, fromDate, refs, requests, statusFilter, toDate, typeFilter, user?.employeeId]);
+  }, [managedViewer, approvalMode, employeeFilter.employeeId, employeeFilter.keyword, employeeFilter.teamId, filteredEmployeeIds, fromDate, refs, requests, statusFilter, toDate, typeFilter, user?.employeeId]);
 
   const pendingDisplayedRequests = useMemo(
     () => displayedRequests.filter((request) => String(request.status) === 'PENDING'),
@@ -194,6 +196,7 @@ export function RequestPage({ approvalMode = false, initialType }: RequestPagePr
 
   const actionMutation = useMutation({
     mutationFn: async ({ id, action }: { id: string; action: 'approve' | 'reject' }) => {
+      if (!canApproveRequests) throw new Error('Bạn không có quyền phê duyệt đơn từ');
       const comment = action === 'approve' ? 'Đã phê duyệt trên hệ thống' : 'Đã từ chối trên hệ thống';
       return (await http.post(`/requests/${id}/${action}`, { comment })).data;
     },
@@ -207,6 +210,7 @@ export function RequestPage({ approvalMode = false, initialType }: RequestPagePr
 
   const approveAllMutation = useMutation({
     mutationFn: async () => {
+      if (!canApproveRequests) throw new Error('Bạn không có quyền phê duyệt đơn từ');
       await Promise.all(
         pendingDisplayedRequests.map((request) => http.post(`/requests/${request.id}/approve`, { comment: 'Phê duyệt tất cả trên hệ thống' }))
       );
@@ -248,7 +252,7 @@ export function RequestPage({ approvalMode = false, initialType }: RequestPagePr
         </div>}
       </div>
 
-      {adminOrHrOrLeader && !initialType && (
+      {managedViewer && !initialType && (
         <EmployeeSearchFilter
           value={employeeFilter}
           onChange={setEmployeeFilter}
@@ -261,7 +265,7 @@ export function RequestPage({ approvalMode = false, initialType }: RequestPagePr
       <div className={canCreateForm ? 'grid-two request-grid' : 'request-grid single-request-list'}>
         {canCreateForm && <form className="card form-grid" onSubmit={submit}>
           <h3>{initialType ? selectedOption?.label : 'Tạo đơn từ'}</h3>
-          {adminOrHrOrLeader ? (
+          {canCreateForOthers ? (
             <label>Nhân viên <span className="required-mark">*</span><select required value={form.employeeId} onChange={(e) => setForm({ ...form, employeeId: e.target.value })}>
               <option value="">-- chọn nhân viên --</option>
               {employees.map((employee) => <option key={String(employee.id)} value={String(employee.id)}>{codeName(String(employee.employeeCode ?? ''), String(employee.fullName ?? ''))}</option>)}
@@ -283,7 +287,7 @@ export function RequestPage({ approvalMode = false, initialType }: RequestPagePr
             {!isMissingCheck && <label>Giờ kết thúc <span className="required-mark">*</span><input required type="time" value={form.endTime} onChange={(e) => setForm({ ...form, endTime: e.target.value })} /></label>}
           </>}
           {isPartialLeave && <div className="inline-note">Sau khi được duyệt, hệ thống sẽ trừ <strong>{duration.hours} giờ phép</strong> khỏi quỹ phép còn lại, quy đổi tương đương <strong>{duration.days} ngày</strong> theo chuẩn 8 giờ = 1 ngày.</div>}
-          {isFullLeave && <div className="inline-note">Đơn nghỉ phép cả ngày sẽ trừ phép năm sau khi Admin/Leader phê duyệt. Ngày nghỉ cuối tuần không bị trừ phép.</div>}
+          {isFullLeave && <div className="inline-note">Đơn nghỉ phép cả ngày sẽ trừ phép năm sau khi được phê duyệt. Ngày nghỉ cuối tuần không bị trừ phép.</div>}
           <label>Lý do <span className="required-mark">*</span><textarea required value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} /></label>
           <button disabled={createMutation.isPending}>{createMutation.isPending ? 'Đang tạo...' : 'Tạo đơn'}</button>
         </form>}
@@ -302,11 +306,11 @@ export function RequestPage({ approvalMode = false, initialType }: RequestPagePr
             </select></label>}
             <label>Từ ngày<input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} /></label>
             <label>Đến ngày<input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} /></label>
-            {approvalMode && <div className="filter-actions">
+            {approvalMode && canApproveRequests && <div className="filter-actions">
               <button
                 type="button"
                 onClick={() => approveAllMutation.mutate()}
-                disabled={pendingDisplayedRequests.length === 0 || approveAllMutation.isPending || actionMutation.isPending}
+                disabled={pendingDisplayedRequests.length === 0 || approveAllMutation.isPending || actionMutation.isPending || !canApproveRequests}
               >
                 {approveAllMutation.isPending ? 'Đang duyệt...' : `Phê duyệt tất cả (${pendingDisplayedRequests.length})`}
               </button>
@@ -325,9 +329,9 @@ export function RequestPage({ approvalMode = false, initialType }: RequestPagePr
                 <td>{String(r.reason ?? '')}</td>
                 <td><span className="badge">{statusLabel(String(r.status ?? ''))}</span></td>
                 {approvalMode && <td>
-                  {isPending ? <>
-                    <button className="small" disabled={actionMutation.isPending || approveAllMutation.isPending} onClick={() => actionMutation.mutate({ id: r.id as string, action: 'approve' })}>Duyệt</button>
-                    <button className="small danger" disabled={actionMutation.isPending || approveAllMutation.isPending} onClick={() => actionMutation.mutate({ id: r.id as string, action: 'reject' })}>Từ chối</button>
+                  {isPending && canApproveRequests ? <>
+                    <button className="small" disabled={actionMutation.isPending || approveAllMutation.isPending || !canApproveRequests} onClick={() => actionMutation.mutate({ id: r.id as string, action: 'approve' })}>Duyệt</button>
+                    <button className="small danger" disabled={actionMutation.isPending || approveAllMutation.isPending || !canApproveRequests} onClick={() => actionMutation.mutate({ id: r.id as string, action: 'reject' })}>Từ chối</button>
                   </> : <span className="hint">Đã xử lý</span>}
                 </td>}
               </tr>;
