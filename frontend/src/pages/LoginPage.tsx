@@ -16,7 +16,7 @@ export function LoginPage() {
     setSubmitting(true);
     try {
       await login(username.trim(), password);
-      navigate('/community');
+      navigate('/dashboard');
     } catch (err) {
       setError('Đăng nhập thất bại. Kiểm tra lại mã nhân viên/mật khẩu hoặc CORS backend.');
     } finally {

@@ -28,13 +28,13 @@ public class AttendanceRequestController {
     }
 
     @PostMapping("/{id}/approve")
-    @PreAuthorize("hasAnyRole('ADMIN','LEADER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public AttendanceRequest approve(@PathVariable UUID id, @RequestBody AttendanceRequestDtos.ApprovalRequest request) {
         return requestService.approve(id, request.comment());
     }
 
     @PostMapping("/{id}/reject")
-    @PreAuthorize("hasAnyRole('ADMIN','LEADER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public AttendanceRequest reject(@PathVariable UUID id, @RequestBody AttendanceRequestDtos.ApprovalRequest request) {
         return requestService.reject(id, request.comment());
     }

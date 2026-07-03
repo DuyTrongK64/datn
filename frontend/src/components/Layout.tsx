@@ -2,7 +2,6 @@ import { useRef, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../state/AuthContext';
 import { roleLabel } from '../utils/labels';
-import { FloatingChatbot } from './FloatingChatbot';
 
 type MenuItem = { to: string; label: string; show: boolean };
 type MenuGroup = { label: string; items: MenuItem[] };
@@ -34,9 +33,7 @@ export function Layout() {
     {
       label: 'Trang chủ',
       items: [
-        { to: '/community', label: 'Bảng tin nội bộ', show: true },
-        { to: '/dashboard', label: 'Tổng quan cá nhân', show: true },
-        { to: '/chat', label: 'Tin nhắn', show: true }
+        { to: '/dashboard', label: 'Dashboard cá nhân', show: true }
       ]
     },
     {
@@ -44,14 +41,14 @@ export function Layout() {
       items: [
         { to: '/device-simulator', label: 'Chấm công nhanh', show: true },
         { to: '/my-attendance', label: 'Bảng công của tôi', show: true },
-        { to: '/attendances', label: 'Bảng công nhân viên', show: canViewTeamScope },
+        { to: '/attendances', label: isLeader && !isAdmin ? 'Bảng công team tôi' : 'Bảng công nhân viên', show: canViewTeamScope },
         { to: '/devices', label: 'Thiết bị chấm công', show: isAdmin }
       ]
     },
     {
       label: 'Đơn từ',
       items: [
-        { to: '/requests', label: 'Tổng hợp đơn từ', show: true },
+        { to: '/requests', label: isLeader && !isAdmin ? 'Đơn từ team tôi' : 'Tổng hợp đơn từ', show: true },
         { to: '/requests/leave', label: 'Đơn nghỉ phép', show: true },
         { to: '/requests/late', label: 'Đơn đi muộn', show: true },
         { to: '/requests/early', label: 'Đơn về sớm', show: true },
@@ -60,14 +57,14 @@ export function Layout() {
         { to: '/requests/remote', label: 'Làm remote', show: true },
         { to: '/requests/overtime', label: 'Làm thêm giờ', show: true },
         { to: '/requests/shift-change', label: 'Đổi ca', show: true },
-        { to: '/approvals', label: 'Phê duyệt đơn', show: isAdmin || isLeader }
+        { to: '/approvals', label: 'Phê duyệt đơn', show: isAdmin }
       ]
     },
     {
       label: 'Nhân sự',
       items: [
-        { to: '/employees', label: 'Danh sách nhân viên', show: canViewTeamScope },
-        { to: '/teams', label: 'Nhóm làm việc', show: canViewTeamScope },
+        { to: '/employees', label: isLeader && !isAdmin ? 'Nhân viên team tôi' : 'Danh sách nhân viên', show: canViewTeamScope },
+        { to: '/teams', label: isLeader && !isAdmin ? 'Team tôi phụ trách' : 'Nhóm làm việc', show: canViewTeamScope },
         { to: '/departments', label: 'Phòng ban', show: isAdmin },
         { to: '/leave-balances', label: 'Quỹ phép nhân viên', show: canViewTeamScope }
       ]
@@ -89,7 +86,7 @@ export function Layout() {
       <header className="main-header product-topbar">
         <div className="brand-block">
           <div className="brand">TimeFlow</div>
-          <span>Chấm công & cộng tác nội bộ</span>
+          <span>Dashboard chấm công & nhân sự</span>
         </div>
         <nav className="top-menu" aria-label="Menu chính">
           {groups.map((group) => {
@@ -129,7 +126,6 @@ export function Layout() {
       <main className="main app-main-content">
         <Outlet />
       </main>
-      <FloatingChatbot />
     </div>
   );
 }

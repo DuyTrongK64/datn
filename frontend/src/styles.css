@@ -1410,3 +1410,66 @@ body, button, input, select, textarea {
     height: min(540px, calc(100vh - 86px));
   }
 }
+
+/* Role-based dashboard */
+.role-dashboard-page { display: grid; gap: 18px; }
+.role-dashboard-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
+  gap: 18px;
+  align-items: stretch;
+  background: linear-gradient(135deg, #0f172a, #1d4ed8);
+  color: white;
+  border-radius: 24px;
+  padding: 26px;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, .18);
+}
+.role-dashboard-hero h2 { margin: 8px 0; font-size: clamp(26px, 4vw, 42px); }
+.role-dashboard-hero p { margin: 0; color: #dbeafe; }
+.eyebrow { display: inline-flex; font-size: 12px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; color: #bfdbfe; }
+.muted-line { margin-top: 8px !important; color: #e0f2fe !important; }
+.hero-status-card {
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 20px;
+  padding: 18px;
+  display: grid;
+  gap: 8px;
+  align-content: center;
+}
+.hero-status-card span { color: #bfdbfe; font-weight: 800; }
+.hero-status-card strong { font-size: 28px; }
+.hero-status-card small { color: #dbeafe; }
+.role-kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: 14px; }
+.role-dashboard-main-grid { grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr); }
+.team-dashboard-list, .mini-table-list { display: grid; gap: 12px; }
+.team-dashboard-card, .mini-table-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #f8fafc;
+}
+.team-dashboard-card strong, .mini-table-row strong { display: block; color: #0f172a; }
+.team-dashboard-card span, .mini-table-row span { color: #64748b; font-size: 13px; }
+.team-dashboard-metrics { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.team-dashboard-metrics span {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  padding: 6px 9px;
+  color: #475569;
+}
+.team-dashboard-metrics b { color: #0f172a; }
+.personal-today-card { display: grid; gap: 8px; color: #334155; }
+.personal-today-card p { margin: 0; }
+.section-title-row { display: flex; justify-content: space-between; gap: 14px; align-items: start; flex-wrap: wrap; margin-bottom: 14px; }
+.section-title-row h3 { margin: 0; }
+.section-title-row p { margin: 4px 0 0; color: #64748b; }
+.success-text { color: #15803d; font-weight: 800; }
+@media (max-width: 900px) {
+  .role-dashboard-hero, .role-dashboard-main-grid { grid-template-columns: 1fr; }
+}

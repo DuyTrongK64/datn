@@ -44,6 +44,71 @@ export type LoginResponse = {
   user: UserProfile;
 };
 
+export type DashboardPersonal = {
+  employeeId?: string;
+  employeeCode?: string;
+  employeeName?: string;
+  departmentName?: string;
+  teamNames?: string[];
+};
+
+export type DashboardAttendanceToday = {
+  id?: string;
+  employeeId?: string;
+  workDate?: string;
+  plannedStartTime?: string;
+  plannedEndTime?: string;
+  firstCheckIn?: string;
+  lastCheckOut?: string;
+  totalWorkingMinutes?: number;
+  lateMinutes?: number;
+  earlyLeaveMinutes?: number;
+  overtimeMinutes?: number;
+  status?: string;
+};
+
+export type DashboardLeaveCard = {
+  totalDays?: number;
+  usedDays?: number;
+  remainingDays?: number;
+};
+
+export type DashboardTeamCard = {
+  teamId: string;
+  teamCode?: string;
+  teamName?: string;
+  memberCount: number;
+  checkedInToday: number;
+  lateToday: number;
+  absentToday: number;
+  pendingRequests: number;
+};
+
+export type DashboardEmployeeCard = {
+  employeeId: string;
+  employeeCode?: string;
+  employeeName?: string;
+  email?: string;
+  phone?: string;
+  departmentName?: string;
+  teamName?: string;
+  todayStatus?: string;
+};
+
+export type DashboardRequestCard = {
+  id: string;
+  employeeId?: string;
+  employeeCode?: string;
+  employeeName?: string;
+  requestTypeCode?: string;
+  requestTypeName?: string;
+  targetDate?: string;
+  endDate?: string;
+  status?: string;
+  reason?: string;
+  createdAt?: string;
+};
+
 export type DashboardResponse = {
   totalEmployees: number;
   checkedInToday: number;
@@ -52,6 +117,15 @@ export type DashboardResponse = {
   pendingRequests: number;
   totalDevices: number;
   onlineDevices: number;
+  roleDashboard: 'ADMIN' | 'LEADER' | 'EMPLOYEE' | string;
+  scopeLabel: string;
+  today: string;
+  personal?: DashboardPersonal;
+  todayAttendance?: DashboardAttendanceToday;
+  leaveBalance?: DashboardLeaveCard;
+  teams: DashboardTeamCard[];
+  employees: DashboardEmployeeCard[];
+  recentRequests: DashboardRequestCard[];
 };
 
 export type BaseEntity = {

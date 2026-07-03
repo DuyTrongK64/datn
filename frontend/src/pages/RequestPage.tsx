@@ -80,7 +80,7 @@ export function RequestPage({ approvalMode = false, initialType }: RequestPagePr
   const { user, hasRole } = useAuth();
   const managedViewer = hasRole('ADMIN', 'LEADER');
   const canCreateForOthers = hasRole('ADMIN');
-  const canApproveRequests = hasRole('ADMIN', 'LEADER');
+  const canApproveRequests = hasRole('ADMIN');
   const refs = useReferences(['employees', 'requestTypes']);
   const queryClient = useQueryClient();
   const defaultType = initialType || 'LEAVE_REQUEST';
@@ -238,7 +238,7 @@ export function RequestPage({ approvalMode = false, initialType }: RequestPagePr
 
   return (
     <section>
-      <h2>{approvalMode ? 'Phê duyệt đơn từ' : initialType ? selectedOption?.label : 'Tổng hợp đơn từ'}</h2>
+      <h2>{approvalMode ? (canApproveRequests ? 'Phê duyệt đơn từ' : 'Đơn chờ duyệt của team (chỉ xem)') : initialType ? selectedOption?.label : 'Tổng hợp đơn từ'}</h2>
 
       <div className="request-stat-grid">
         <div className="request-stat-card"><span>Tổng đơn</span><strong>{requestStats.total}</strong></div>
@@ -317,7 +317,7 @@ export function RequestPage({ approvalMode = false, initialType }: RequestPagePr
             </div>}
           </div>
           <table>
-            <thead><tr><th>Nhân viên</th><th>Loại đơn</th><th>Ngày</th><th>Giờ</th><th>Lý do</th><th>Trạng thái</th>{approvalMode && <th>Thao tác</th>}</tr></thead>
+            <thead><tr><th>Nhân viên</th><th>Loại đơn</th><th>Ngày</th><th>Giờ</th><th>Lý do</th><th>Trạng thái</th>{approvalMode && canApproveRequests && <th>Thao tác</th>}</tr></thead>
             <tbody>{displayedRequests.map((r) => {
               const typeCode = requestTypeById(refs, r.requestTypeId);
               const isPending = String(r.status) === 'PENDING';
@@ -328,8 +328,8 @@ export function RequestPage({ approvalMode = false, initialType }: RequestPagePr
                 <td>{String(r.startTime ?? '')}{r.endTime ? ` - ${String(r.endTime)}` : ''}</td>
                 <td>{String(r.reason ?? '')}</td>
                 <td><span className="badge">{statusLabel(String(r.status ?? ''))}</span></td>
-                {approvalMode && <td>
-                  {isPending && canApproveRequests ? <>
+                {approvalMode && canApproveRequests && <td>
+                  {isPending ? <>
                     <button className="small" disabled={actionMutation.isPending || approveAllMutation.isPending || !canApproveRequests} onClick={() => actionMutation.mutate({ id: r.id as string, action: 'approve' })}>Duyệt</button>
                     <button className="small danger" disabled={actionMutation.isPending || approveAllMutation.isPending || !canApproveRequests} onClick={() => actionMutation.mutate({ id: r.id as string, action: 'reject' })}>Từ chối</button>
                   </> : <span className="hint">Đã xử lý</span>}

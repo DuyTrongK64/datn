@@ -99,6 +99,9 @@ public class AttendanceController {
 
     @GetMapping("/{dailyAttendanceId}/details")
     public List<AttendanceDetail> details(@PathVariable UUID dailyAttendanceId) {
+        DailyAttendance attendance = dailyAttendanceRepository.findById(dailyAttendanceId)
+                .orElseThrow(() -> new com.duytrong.attendance.common.BusinessException("Không tìm thấy bảng công ngày"));
+        accessControlService.requireCanViewEmployee(attendance.getEmployeeId());
         return attendanceDetailRepository.findByDailyAttendanceId(dailyAttendanceId);
     }
 

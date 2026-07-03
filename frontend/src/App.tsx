@@ -8,8 +8,6 @@ import { DevicePage } from './pages/DevicePage';
 import { DeviceSimulatorPage } from './pages/DeviceSimulatorPage';
 import { AttendancePage } from './pages/AttendancePage';
 import { RequestPage } from './pages/RequestPage';
-import { CommunityPage } from './pages/CommunityPage';
-import { ChatPage } from './pages/ChatPage';
 import { entityPages } from './entityPages';
 
 export default function App() {
@@ -24,10 +22,8 @@ export default function App() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<Navigate to="/community" replace />} />
+        <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
-        <Route path="community" element={<CommunityPage />} />
-        <Route path="chat" element={<ChatPage />} />
         <Route path="devices" element={<DevicePage />} />
         <Route path="device-simulator" element={<DeviceSimulatorPage />} />
         <Route path="attendances" element={<AttendancePage />} />
@@ -46,7 +42,7 @@ export default function App() {
           <Route key={page.path} path={page.path} element={<EntityPage config={page} />} />
         ))}
       </Route>
-      <Route path="*" element={<Navigate to="/community" replace />} />
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
 }

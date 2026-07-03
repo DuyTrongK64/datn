@@ -47,7 +47,7 @@ export function EntityPage({ config }: { config: EntityPageConfig }) {
   const { hasRole } = useAuth();
   const isTeamPage = config.path === "teams";
   const isEmployeePage = config.path === "employees";
-  const leaderViewOnly = hasRole("LEADER") && !hasRole("ADMIN") && ["teams", "employees", "leave-balances"].includes(config.path);
+  const leaderViewOnly = hasRole("LEADER") && !hasRole("ADMIN");
   const canManageTeamMembers = hasRole("ADMIN");
   const isReadOnly = Boolean(config.readOnly) || leaderViewOnly;
   const [editing, setEditing] = useState<BaseEntity | null>(null);

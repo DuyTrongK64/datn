@@ -4,6 +4,7 @@ import com.duytrong.attendance.common.BaseEntity;
 import com.duytrong.attendance.common.BusinessException;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,12 +28,14 @@ public abstract class SimpleCrudController<T extends BaseEntity> {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public T create(@RequestBody T input) {
         input.setId(null);
         return repository.save(input);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public T update(@PathVariable UUID id, @RequestBody T input) {
         T existing = repository.findById(id).orElseThrow(() -> new BusinessException("Không tìm thấy dữ liệu"));
         BeanUtils.copyProperties(input, existing, "id", "createdAt", "updatedAt");
@@ -40,6 +43,7 @@ public abstract class SimpleCrudController<T extends BaseEntity> {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public void delete(@PathVariable UUID id) {
         repository.deleteById(id);
     }
