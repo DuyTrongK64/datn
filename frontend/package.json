@@ -22,5 +22,12 @@
     "@vitejs/plugin-react": "latest",
     "typescript": "latest",
     "vite": "latest"
+  },
+  
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "deploy": "npm run build && gh-pages -d dist -r https://github.com/DuyTrongK64/datn"
   }
+
 }

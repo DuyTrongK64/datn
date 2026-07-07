@@ -1,33 +1,39 @@
 server:
-  port: 8080
+  port: ${PORT:8080}
+  address: 0.0.0.0
 
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/attendance_db
-    username: attendance_user
-    password: attendance_pass
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/attendance_db}
+    username: ${DATABASE_USERNAME:attendance_user}
+    password: ${DATABASE_PASSWORD:attendance_pass}
+
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: ${JPA_DDL_AUTO:update}
     open-in-view: false
     properties:
       hibernate:
         format_sql: true
         jdbc:
           time_zone: UTC
+        dialect: org.hibernate.dialect.PostgreSQLDialect
 
 app:
   security:
     jwt:
-      # Secret tối thiểu 32 ký tự. Trong môi trường thật, đưa vào biến môi trường.
-      secret: "attendance-management-secret-key-for-graduation-project-2026"
-      access-token-expiration-minutes: 30
-      refresh-token-expiration-days: 14
+      # Secret tối thiểu 32 ký tự.
+      # Khi deploy thật, không hard-code secret mà truyền qua biến môi trường JWT_SECRET.
+      secret: ${JWT_SECRET:attendance-management-secret-key-for-graduation-project-2026}
+      access-token-expiration-minutes: ${JWT_ACCESS_EXPIRATION_MINUTES:30}
+      refresh-token-expiration-days: ${JWT_REFRESH_EXPIRATION_DAYS:14}
+
     login:
-      max-failed-attempts: 5
-      lock-duration-minutes: 15
+      max-failed-attempts: ${LOGIN_MAX_FAILED_ATTEMPTS:5}
+      lock-duration-minutes: ${LOGIN_LOCK_DURATION_MINUTES:15}
+
   cors:
-    allowed-origins: "http://localhost:5173"
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
 
 logging:
   level:
