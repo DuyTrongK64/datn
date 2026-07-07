@@ -123,15 +123,24 @@ public class AttendanceCalculationService {
 
     @Transactional
     public List<DailyAttendance> recalculateRange(LocalDate from, LocalDate to, UUID employeeId, UUID teamId) {
+        LocalDate today = systemTimeService.today();
+        LocalDate effectiveTo = to.isAfter(today) ? today : to;
+
+        if (from.isAfter(effectiveTo)) {
+            return List.of();
+        }
+
         List<Employee> employees = resolveEmployees(employeeId, teamId);
         List<DailyAttendance> result = new ArrayList<>();
         LocalDate date = from;
-        while (!date.isAfter(to)) {
+
+        while (!date.isAfter(effectiveTo)) {
             for (Employee employee : employees) {
                 result.add(recalculate(employee.getId(), date));
             }
             date = date.plusDays(1);
         }
+
         return result;
     }
 

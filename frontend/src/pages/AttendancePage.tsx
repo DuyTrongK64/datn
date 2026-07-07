@@ -399,6 +399,7 @@ function MonthlyCalendar({ rows, month, loading, compact = false, todayValue }: 
       {days.map((cell, index) => {
         if (!cell.date) return <div key={`blank-${index}`} className="calendar-day blank" />;
         const row = cell.row;
+        const isFuture = cell.date > highlightToday;
         const isDayOff = Boolean(row?.holiday || row?.weekend);
         const dayClass = row?.holiday ? 'holiday-day' : row?.weekend ? 'weekend-day' : 'workday';
         const todayClass = cell.date === highlightToday ? 'today-day' : '';
@@ -409,7 +410,9 @@ function MonthlyCalendar({ rows, month, loading, compact = false, todayValue }: 
           </div>
           {row?.holidayName && <div className="holiday-name">{row.holidayName}</div>}
           <div className="calendar-lines">
-            {isDayOff ? (
+            {isFuture ? (
+              <span className="muted-text">Chưa đến ngày</span>
+            ) : isDayOff ? (
               <>
                 <span>Máy chấm công: {shortTime(row?.firstCheckIn) || '--'} - {shortTime(row?.lastCheckOut) || '--'}</span>
                 <span>Nghỉ giữa giờ: {shortTime(row?.lastBreakOut) || '--'} - {shortTime(row?.firstBreakIn) || '--'}</span>
@@ -426,11 +429,20 @@ function MonthlyCalendar({ rows, month, loading, compact = false, todayValue }: 
                 <span>OT: {minutesToHourText(row?.overtimeMinutes)}</span>
               </>
             )}
-            {row?.approvedRequestTypes && <span className="request-line">Đơn đã duyệt: {row.approvedRequestTypes}</span>}
-            {Boolean(row?.approvedLeaveMinutes) && <span className="request-line">Phép tính vào công: {minutesToHourText(row?.approvedLeaveMinutes)}</span>}
+
+            {!isFuture && row?.approvedRequestTypes && (
+              <span className="request-line">Đơn đã duyệt: {row.approvedRequestTypes}</span>
+            )}
+
+            {!isFuture && Boolean(row?.approvedLeaveMinutes) && (
+              <span className="request-line">Phép tính vào công: {minutesToHourText(row?.approvedLeaveMinutes)}</span>
+            )}
           </div>
-          {!isDayOff && <span className="badge mini-badge">{viLabel(row?.status ?? 'ABSENT')}</span>}
-        </div>;
+
+          {!isFuture && !isDayOff && row?.status && (
+            <span className="badge mini-badge">{viLabel(row.status)}</span>
+          )}
+        </div>
       })}
     </div>
   </div>;

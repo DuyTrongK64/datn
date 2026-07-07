@@ -15,13 +15,13 @@ public interface AttendanceRequestRepository extends JpaRepository<AttendanceReq
     List<AttendanceRequest> findByStatus(RequestStatus status);
 
     @Query("""
-            select r
-            from AttendanceRequest r
-            where r.employeeId = :employeeId
-              and r.status = :status
-              and r.targetDate <= :date
-              and (r.endDate is null or r.endDate >= :date)
-            """)
+        select r
+        from AttendanceRequest r
+        where r.employeeId = :employeeId
+          and r.status = :status
+          and r.targetDate <= :date
+          and coalesce(r.endDate, r.targetDate) >= :date
+        """)
     List<AttendanceRequest> findEffectiveRequests(@Param("employeeId") UUID employeeId,
                                                   @Param("status") RequestStatus status,
                                                   @Param("date") LocalDate date);
