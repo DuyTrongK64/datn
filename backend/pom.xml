@@ -34,6 +34,12 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>com.google.cloud.sql</groupId>
+            <artifactId>postgres-socket-factory</artifactId>
+            <version>1.22.0</version>
+        </dependency>
+
         <!-- Spring Data JPA: làm việc với database -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
