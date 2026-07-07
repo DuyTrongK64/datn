@@ -25,8 +25,8 @@
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "@vitejs/plugin-react": "latest",
+    "gh-pages": "^6.3.0",
     "typescript": "latest",
-    "vite": "latest",
-    "gh-pages": "latest"
+    "vite": "latest"
   }
 }
