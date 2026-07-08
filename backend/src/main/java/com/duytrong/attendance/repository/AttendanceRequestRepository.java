@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -15,14 +16,14 @@ public interface AttendanceRequestRepository extends JpaRepository<AttendanceReq
     List<AttendanceRequest> findByStatus(RequestStatus status);
 
     @Query("""
-        select r
-        from AttendanceRequest r
-        where r.employeeId = :employeeId
-          and r.status = :status
-          and r.targetDate <= :date
-          and coalesce(r.endDate, r.targetDate) >= :date
-        """)
-    List<AttendanceRequest> findEffectiveRequests(@Param("employeeId") UUID employeeId,
-                                                  @Param("status") RequestStatus status,
-                                                  @Param("date") LocalDate date);
+    select r
+    from AttendanceRequest r
+    where r.employeeId = :employeeId
+      and r.status in :statuses
+      and r.targetDate <= :date
+      and coalesce(r.endDate, r.targetDate) >= :date
+    """)
+    List<AttendanceRequest> findEffectiveRequestsByStatuses(@Param("employeeId") UUID employeeId,
+                                                            @Param("statuses") Collection<RequestStatus> statuses,
+                                                            @Param("date") LocalDate date);
 }

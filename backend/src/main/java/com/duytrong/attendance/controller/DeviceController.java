@@ -13,6 +13,7 @@ import com.duytrong.attendance.repository.EmployeeRepository;
 import com.duytrong.attendance.service.DeviceIngestionService;
 import com.duytrong.attendance.service.SystemTimeService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -41,15 +42,25 @@ public class DeviceController {
     }
 
     @GetMapping("/my-today-events")
-    public List<DeviceDtos.PunchHistoryResponse> myTodayEvents(Authentication authentication) {
+    public List<DeviceDtos.PunchHistoryResponse> myTodayEvents(
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate date,
+            Authentication authentication) {
+
         AppUser user = userRepository.findByUsername(authentication.getName())
                 .orElseThrow(() -> new BusinessException("Không tìm thấy tài khoản"));
+
         if (user.getEmployeeId() == null) {
             return List.of();
         }
-        LocalDate today = systemTimeService.today();
+
+        LocalDate targetDate = date == null ? systemTimeService.today() : date;
+
         return eventRepository.findByEmployeeIdAndEventTimeBetweenOrderByEventTimeAsc(
-                        user.getEmployeeId(), today.atStartOfDay(), today.plusDays(1).atStartOfDay().minusNanos(1))
+                        user.getEmployeeId(),
+                        targetDate.atStartOfDay(),
+                        targetDate.plusDays(1).atStartOfDay().minusNanos(1))
                 .stream()
                 .map(this::toPunchHistoryResponse)
                 .toList();

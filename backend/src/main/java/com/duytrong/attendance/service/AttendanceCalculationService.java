@@ -151,31 +151,54 @@ public class AttendanceCalculationService {
     }
 
     public List<AttendanceDtos.AttendanceResponse> buildEmployeeCalendar(UUID employeeId, LocalDate from, LocalDate to) {
-        Map<LocalDate, DailyAttendance> existing = dailyAttendanceRepository.findByEmployeeIdAndWorkDateBetween(employeeId, from, to).stream()
-                .collect(Collectors.toMap(DailyAttendance::getWorkDate, Function.identity(), (oldValue, newValue) -> oldValue));
+        Map<LocalDate, DailyAttendance> existing = dailyAttendanceRepository
+                .findByEmployeeIdAndWorkDateBetween(employeeId, from, to)
+                .stream()
+                .collect(Collectors.toMap(
+                        DailyAttendance::getWorkDate,
+                        Function.identity(),
+                        (oldValue, newValue) -> oldValue
+                ));
+
         List<DailyAttendance> rows = new ArrayList<>();
         LocalDate date = from;
+
         while (!date.isAfter(to)) {
             DailyAttendance row = existing.get(date);
+
+            Optional<EmployeeSchedule> scheduleOpt = employeeScheduleRepository.findByEmployeeIdAndWorkDate(employeeId, date);
+            Shift shift;
+
             if (row == null) {
                 row = new DailyAttendance();
                 row.setEmployeeId(employeeId);
                 row.setWorkDate(date);
-                Optional<EmployeeSchedule> scheduleOpt = employeeScheduleRepository.findByEmployeeIdAndWorkDate(employeeId, date);
 
                 if (scheduleOpt.isPresent()) {
                     row.setScheduleId(scheduleOpt.get().getId());
                 }
-                Shift shift = resolveShift(employeeId, date, scheduleOpt).orElse(null);
+
+                shift = resolveShift(employeeId, date, scheduleOpt).orElse(null);
                 applyPlannedShift(row, shift);
+
                 boolean dayOff = isDayOff(date);
                 row.setStatus(dayOff ? AttendanceStatus.HOLIDAY : AttendanceStatus.ABSENT);
                 row.setCalculationStatus(dayOff ? CalculationStatus.CALCULATED : CalculationStatus.NOT_CALCULATED);
-                applyApprovedRequestOverrides(row, date, shift);
+            } else {
+                if (row.getShiftId() != null) {
+                    shift = shiftRepository.findById(row.getShiftId()).orElse(null);
+                } else {
+                    shift = resolveShift(employeeId, date, scheduleOpt).orElse(null);
+                }
             }
+
+            // Quan trọng: luôn apply lại danh sách đơn cho cả row đã tồn tại và row tạm
+            applyApprovedRequestOverrides(row, date, shift);
+
             rows.add(row);
             date = date.plusDays(1);
         }
+
         return toResponses(rows);
     }
 
@@ -305,26 +328,47 @@ public class AttendanceCalculationService {
 
     private void applyApprovedRequestOverrides(DailyAttendance daily, LocalDate workDate, Shift shift) {
         if (daily.getEmployeeId() == null) return;
-        List<AttendanceRequest> approvedRequests = requestRepository.findEffectiveRequests(daily.getEmployeeId(), RequestStatus.APPROVED, workDate);
-        if (approvedRequests.isEmpty()) {
+        List<AttendanceRequest> effectiveRequests = requestRepository.findEffectiveRequestsByStatuses(
+                daily.getEmployeeId(),
+                List.of(RequestStatus.PENDING, RequestStatus.APPROVED),
+                workDate
+        );
+
+        List<AttendanceRequest> approvedRequests = effectiveRequests.stream()
+                .filter(request -> request.getStatus() == RequestStatus.APPROVED)
+                .toList();        if (approvedRequests.isEmpty()) {
             daily.setApprovedLeaveMinutes(0);
             daily.setApprovedRequestTypes(null);
             return;
         }
 
         Map<UUID, RequestType> typeMap = requestTypeRepository.findAllById(
-                        approvedRequests.stream().map(AttendanceRequest::getRequestTypeId).filter(Objects::nonNull).toList())
-                .stream().collect(Collectors.toMap(RequestType::getId, Function.identity()));
+                        effectiveRequests.stream()
+                                .map(AttendanceRequest::getRequestTypeId)
+                                .filter(Objects::nonNull)
+                                .toList())
+                .stream()
+                .collect(Collectors.toMap(RequestType::getId, Function.identity()));
 
         int approvedMinutes = 0;
         List<String> labels = new ArrayList<>();
+
+        for (AttendanceRequest request : effectiveRequests) {
+            RequestType type = typeMap.get(request.getRequestTypeId());
+            String code = type == null ? "" : type.getCode();
+            String name = type == null ? code : type.getName();
+
+            if (name != null && !name.isBlank()) {
+                String statusLabel = request.getStatus() == RequestStatus.APPROVED ? "Đã duyệt" : "Chờ duyệt";
+                labels.add(name + " (" + statusLabel + ")");
+            }
+        }
+
         boolean fullDayLeave = false;
         boolean remote = false;
         for (AttendanceRequest request : approvedRequests) {
             RequestType type = typeMap.get(request.getRequestTypeId());
             String code = type == null ? "" : type.getCode();
-            String name = type == null ? code : type.getName();
-            if (name != null && !name.isBlank()) labels.add(name);
 
             if ("LEAVE_REQUEST".equals(code)) {
                 fullDayLeave = true;

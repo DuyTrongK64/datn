@@ -431,8 +431,7 @@ function MonthlyCalendar({ rows, month, loading, compact = false, todayValue }: 
             )}
 
             {!isFuture && row?.approvedRequestTypes && (
-              <span className="request-line">Đơn đã duyệt: {row.approvedRequestTypes}</span>
-            )}
+              <span className="request-line">Đơn trong ngày: {row.approvedRequestTypes}</span>)}
 
             {!isFuture && Boolean(row?.approvedLeaveMinutes) && (
               <span className="request-line">Phép tính vào công: {minutesToHourText(row?.approvedLeaveMinutes)}</span>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { http } from '../api/http';
 import { useAuth } from '../state/AuthContext';
@@ -28,30 +28,57 @@ export function DeviceSimulatorPage() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [message, setMessage] = useState('');
+  const [selectedDate, setSelectedDate] = useState('');
+
   const { data: timeSetting } = useQuery({
     queryKey: ['system-time'],
     queryFn: async () => (await http.get<SystemTimeSetting>('/system-time')).data
   });
+
+  const effectiveDate =
+    timeSetting?.effectiveDate ||
+    (timeSetting?.effectiveNow ? dateText(timeSetting.effectiveNow) : '');
+
+  useEffect(() => {
+    if (!selectedDate && effectiveDate) {
+      setSelectedDate(effectiveDate);
+    }
+  }, [effectiveDate, selectedDate]);
+
+  const isToday = Boolean(effectiveDate && selectedDate === effectiveDate);
+  const isPastDate = Boolean(effectiveDate && selectedDate < effectiveDate);
+  const isFutureDate = Boolean(effectiveDate && selectedDate > effectiveDate);
+
   const { data: history = [], isLoading } = useQuery({
-    queryKey: ['my-punch-history', timeSetting?.effectiveDate],
-    queryFn: async () => (await http.get<PunchHistory[]>('/devices/my-today-events')).data
+    queryKey: ['my-punch-history', selectedDate],
+    queryFn: async () =>
+      (await http.get<PunchHistory[]>(`/devices/my-today-events?date=${selectedDate}`)).data,
+    enabled: Boolean(selectedDate)
   });
 
   const punchMutation = useMutation({
     mutationFn: async (eventType: EventType) => {
-      if (!user?.employeeCode) throw new Error('Tài khoản hiện tại chưa gắn mã nhân viên để chấm công.');
+      if (!user?.employeeCode) {
+        throw new Error('Tài khoản hiện tại chưa gắn mã nhân viên để chấm công.');
+      }
+
       return (await http.post('/devices/my-punch', { eventType })).data;
     },
     onSuccess: (_data, eventType) => {
       const button = buttons.find((item) => item.type === eventType);
       setMessage(`${button?.label || 'Chấm công'} thành công.`);
+
       queryClient.invalidateQueries({ queryKey: ['my-punch-history'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['attendances'] });
       queryClient.invalidateQueries({ queryKey: ['attendance-calendar'] });
     },
-    onError: (error: any) => setMessage(error.response?.data?.message || error.message || 'Không thể gửi chấm công.')
+    onError: (error: any) => {
+      setMessage(error.response?.data?.message || error.message || 'Không thể gửi chấm công.');
+    }
   });
+
+  const canPunch = isToday && Boolean(user?.employeeCode) && !punchMutation.isPending;
 
   return (
     <section className="punch-page">
@@ -59,8 +86,12 @@ export function DeviceSimulatorPage() {
         <div>
           <span className="eyebrow">Chấm công</span>
           <h2>Chấm công trong ngày</h2>
-          <p>Nhấn một trong bốn nút bên dưới để ghi nhận log chấm công. Hệ thống tự dùng giờ thực tế hoặc giờ demo đã thiết lập.</p>
+          <p>
+            Nhấn một trong bốn nút bên dưới để ghi nhận log chấm công.
+            Khi chọn ngày trong quá khứ, hệ thống chỉ hiển thị lịch sử và khóa thao tác chấm công.
+          </p>
         </div>
+
         <span className={`badge ${timeSetting?.useCustomTime ? 'warning-badge' : ''}`}>
           {timeSetting?.effectiveNow?.replace('T', ' ').slice(0, 16) || '--'}
         </span>
@@ -71,29 +102,79 @@ export function DeviceSimulatorPage() {
           <div className="section-title-row">
             <div>
               <h3>Thao tác chấm công</h3>
-              <p>Mã nhân viên: <strong>{user?.employeeCode || 'Chưa gắn mã'}</strong></p>
+              <p>
+                Mã nhân viên: <strong>{user?.employeeCode || 'Chưa gắn mã'}</strong>
+              </p>
             </div>
           </div>
+
+          <label>
+            Ngày xem log
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => {
+                setSelectedDate(e.target.value);
+                setMessage('');
+              }}
+            />
+          </label>
+
+          {isPastDate && (
+            <p className="hint">
+              Bạn đang xem lịch sử ngày cũ, các nút chấm công đã bị khóa.
+            </p>
+          )}
+
+          {isFutureDate && (
+            <p className="hint">
+              Không thể chấm công cho ngày tương lai.
+            </p>
+          )}
+
+          {!user?.employeeCode && (
+            <p className="alert error">
+              Tài khoản hiện tại chưa gắn mã nhân viên nên không thể chấm công.
+            </p>
+          )}
+
           <div className="punch-grid">
             {buttons.map((button) => (
-              <button key={button.type} type="button" className={`punch-button ${button.className}`} onClick={() => punchMutation.mutate(button.type)} disabled={punchMutation.isPending || !user?.employeeCode}>
+              <button
+                key={button.type}
+                type="button"
+                className={`punch-button ${button.className}`}
+                onClick={() => punchMutation.mutate(button.type)}
+                disabled={!canPunch}
+              >
                 {button.label}
                 <span>{button.hint}</span>
               </button>
             ))}
           </div>
-          {message && <p className={message.includes('thành công') ? 'success-text' : 'alert error'}>{message}</p>}
-          <p className="hint">Khi demo với hội đồng, bạn có thể đổi thời gian hệ thống ở trang Tổng quan. API key chỉ dùng cho thiết bị chấm công thật gửi dữ liệu qua API.</p>
+
+          {message && (
+            <p className={message.includes('thành công') ? 'success-text' : 'alert error'}>
+              {message}
+            </p>
+          )}
+
+          <p className="hint">
+            Khi demo với hội đồng, bạn có thể đổi thời gian hệ thống ở trang Tổng quan.
+            API key chỉ dùng cho thiết bị chấm công thật gửi dữ liệu qua API.
+          </p>
         </div>
 
         <div className="card punch-history-card">
           <div className="section-title-row">
             <div>
-              <h3>Lịch sử chấm công hôm nay</h3>
-              <p>Danh sách log của ngày {timeSetting?.effectiveDate || dateText(timeSetting?.effectiveNow)}.</p>
+              <h3>{isToday ? 'Lịch sử chấm công hôm nay' : 'Lịch sử chấm công'}</h3>
+              <p>Danh sách log của ngày {selectedDate || '--'}.</p>
             </div>
+
             <span className="badge">{history.length} log</span>
           </div>
+
           <div className="table-wrap">
             <table className="compact-table">
               <thead>
@@ -104,16 +185,36 @@ export function DeviceSimulatorPage() {
                   <th>Trạng thái</th>
                 </tr>
               </thead>
+
               <tbody>
-                {isLoading ? <tr><td colSpan={4}>Đang tải lịch sử...</td></tr> : history.map((event) => (
-                  <tr key={event.id}>
-                    <td><strong>{timeText(event.eventTime)}</strong></td>
-                    <td>{viLabel(event.eventType)}</td>
-                    <td>{event.deviceCode || 'DEVICE_001'}</td>
-                    <td>{event.valid ? <span className="badge success-badge">Hợp lệ</span> : <span className="badge danger-badge">Không hợp lệ</span>}</td>
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={4}>Đang tải lịch sử...</td>
                   </tr>
-                ))}
-                {!isLoading && history.length === 0 && <tr><td colSpan={4}>Hôm nay chưa có log chấm công.</td></tr>}
+                ) : (
+                  history.map((event) => (
+                    <tr key={event.id}>
+                      <td>
+                        <strong>{timeText(event.eventTime)}</strong>
+                      </td>
+                      <td>{viLabel(event.eventType)}</td>
+                      <td>{event.deviceCode || 'DEVICE_001'}</td>
+                      <td>
+                        {event.valid ? (
+                          <span className="badge success-badge">Hợp lệ</span>
+                        ) : (
+                          <span className="badge danger-badge">Không hợp lệ</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+
+                {!isLoading && history.length === 0 && (
+                  <tr>
+                    <td colSpan={4}>Ngày này chưa có log chấm công.</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
