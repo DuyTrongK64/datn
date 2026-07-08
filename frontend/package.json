@@ -14,8 +14,13 @@
     "deploy": "npm run build && gh-pages -d dist -r https://github.com/DuyTrongK64/datn.git"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/material": "^9.2.0",
+    "@mui/x-date-pickers": "^9.8.0",
     "@tanstack/react-query": "latest",
     "axios": "latest",
+    "dayjs": "^1.11.21",
     "lucide-react": "latest",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",

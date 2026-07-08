@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../state/AuthContext';
 import { roleLabel } from '../utils/labels';
+import { FloatingChatbot } from './FloatingChatbot';
 
 type MenuItem = { to: string; label: string; show: boolean };
 type MenuGroup = { label: string; items: MenuItem[] };
@@ -39,7 +40,7 @@ export function Layout() {
     {
       label: 'Chấm công',
       items: [
-        { to: '/device-simulator', label: 'Chấm công nhanh', show: true },
+        { to: '/device-simulator', label: 'Mô phỏng máy chấm công', show: true },
         { to: '/my-attendance', label: 'Bảng công của tôi', show: true },
         { to: '/attendances', label: isLeader && !isAdmin ? 'Bảng công team tôi' : 'Bảng công nhân viên', show: canViewTeamScope },
         { to: '/devices', label: 'Thiết bị chấm công', show: isAdmin }
@@ -126,6 +127,8 @@ export function Layout() {
       <main className="main app-main-content">
         <Outlet />
       </main>
+      <FloatingChatbot />
+
     </div>
   );
 }

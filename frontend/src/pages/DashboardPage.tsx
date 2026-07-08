@@ -124,7 +124,7 @@ export function DashboardPage() {
       <div className="role-dashboard-hero">
         <div>
           <span className="eyebrow">{roleTitle}</span>
-          <h2>{greeting(effectiveNow)}, {personalName}</h2>
+          <h2 className="welCome">{greeting(effectiveNow)}, {personalName}</h2>
           <p>
             {user?.employeeCode || data?.personal?.employeeCode || 'Chưa có mã nhân viên'} · {user?.roles.map(roleLabel).join(', ')} · Phạm vi: <strong>{data?.scopeLabel}</strong> · Ngày {dateText(data?.today)}
           </p>

@@ -1,36 +1,37 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createEntity,
   deleteEntity,
   listEntities,
-  updateEntity,
-} from "../api/crudApi";
-import { useAuth } from "../state/AuthContext";
+  updateEntity
+} from '../api/crudApi';
+import { useAuth } from '../state/AuthContext';
 import type {
   BaseEntity,
   FieldConfig,
   ReferenceKey,
-  TeamMember,
-} from "../types";
-import type { EntityPageConfig } from "../entityPages";
+  TeamMember
+} from '../types';
+import type { EntityPageConfig } from '../entityPages';
 import {
   displayEntity,
   findDisplay,
-  useReferences,
-} from "../hooks/useReferences";
-import { codeName } from "../utils/format";
+  useReferences
+} from '../hooks/useReferences';
+import { codeName } from '../utils/format';
 import {
   EmployeeSearchFilter,
   type EmployeeSearchValue,
-  filterEmployeesBySearch,
-} from "../components/EmployeeSearchFilter";
-import { optionLabel, viLabel } from "../utils/labels";
+  filterEmployeesBySearch
+} from '../components/EmployeeSearchFilter';
+import { AppDatePicker, AppDateTimePicker, AppTimePicker } from '../components/AppDatePickers';
+import { optionLabel, viLabel } from '../utils/labels';
 
 function defaultValueFor(field: FieldConfig) {
   if (field.defaultValue !== undefined) return field.defaultValue;
-  if (field.type === "checkbox") return false;
-  return "";
+  if (field.type === 'checkbox') return false;
+  return '';
 }
 
 function emptyForm(fields: FieldConfig[]): BaseEntity {
@@ -45,86 +46,94 @@ export function EntityPage({ config }: { config: EntityPageConfig }) {
   const queryClient = useQueryClient();
   const refs = useReferences();
   const { hasRole } = useAuth();
-  const isTeamPage = config.path === "teams";
-  const isEmployeePage = config.path === "employees";
-  const leaderViewOnly = hasRole("LEADER") && !hasRole("ADMIN");
-  const canManageTeamMembers = hasRole("ADMIN");
+  const isTeamPage = config.path === 'teams';
+  const isEmployeePage = config.path === 'employees';
+  const leaderViewOnly = hasRole('LEADER') && !hasRole('ADMIN');
+  const canManageTeamMembers = hasRole('ADMIN');
   const isReadOnly = Boolean(config.readOnly) || leaderViewOnly;
   const [editing, setEditing] = useState<BaseEntity | null>(null);
   const [form, setForm] = useState<BaseEntity>(() => emptyForm(config.fields));
   const [employeeFilter, setEmployeeFilter] = useState<EmployeeSearchValue>({
-    teamId: "",
-    keyword: "",
-    employeeId: "",
+    teamId: '',
+    keyword: '',
+    employeeId: ''
   });
   const [selectedTeam, setSelectedTeam] = useState<BaseEntity | null>(null);
-  const [memberEmployeeId, setMemberEmployeeId] = useState("");
+  const [memberEmployeeId, setMemberEmployeeId] = useState('');
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
+
   const { data = [], isLoading } = useQuery({
     queryKey: [config.apiPath],
-    queryFn: () => listEntities<BaseEntity>(config.apiPath),
+    queryFn: () => listEntities<BaseEntity>(config.apiPath)
   });
 
   const { data: teamMembers = [] } = useQuery({
-    queryKey: ["team-members-for-contract-filter"],
-    queryFn: () => listEntities<TeamMember>("/team-members"),
+    queryKey: ['team-members-for-contract-filter'],
+    queryFn: () => listEntities<TeamMember>('/team-members'),
     enabled: Boolean(
       config.teamFilter ||
       config.employeeFilter ||
       isTeamPage ||
-      isEmployeePage,
-    ),
+      isEmployeePage
+    )
   });
 
   const shouldShowEmployeeFilter = Boolean(
-    config.teamFilter || config.employeeFilter || isEmployeePage,
+    config.teamFilter || config.employeeFilter || isEmployeePage
   );
 
   const filteredEmployees = useMemo(() => {
     if (!shouldShowEmployeeFilter) return refs.employees ?? [];
+
     return filterEmployeesBySearch(
       refs.employees ?? [],
       teamMembers,
       employeeFilter.teamId,
-      employeeFilter.keyword,
+      employeeFilter.keyword
     );
   }, [
     employeeFilter.keyword,
     employeeFilter.teamId,
     refs.employees,
     shouldShowEmployeeFilter,
-    teamMembers,
+    teamMembers
   ]);
 
   const filteredEmployeeIds = useMemo(
     () => new Set(filteredEmployees.map((employee) => String(employee.id))),
-    [filteredEmployees],
+    [filteredEmployees]
   );
 
   const effectiveRefs = useMemo(() => {
     if (!shouldShowEmployeeFilter) return refs;
-    return { ...refs, employees: filteredEmployees };
+    return {
+      ...refs,
+      employees: filteredEmployees
+    };
   }, [filteredEmployees, refs, shouldShowEmployeeFilter]);
 
   const visibleData = useMemo(() => {
     let rows = data;
+
     if (
       shouldShowEmployeeFilter &&
       (employeeFilter.teamId || employeeFilter.keyword.trim())
     ) {
       rows = rows.filter((row) =>
         filteredEmployeeIds.has(
-          String(isEmployeePage ? row.id : (row.employeeId ?? "")),
-        ),
+          String(isEmployeePage ? row.id : (row.employeeId ?? ''))
+        )
       );
     }
+
     if (shouldShowEmployeeFilter && employeeFilter.employeeId) {
       rows = rows.filter(
         (row) =>
-          String(isEmployeePage ? row.id : (row.employeeId ?? "")) ===
-          String(employeeFilter.employeeId),
+          String(isEmployeePage ? row.id : (row.employeeId ?? '')) ===
+          String(employeeFilter.employeeId)
       );
     }
+
     return rows;
   }, [
     data,
@@ -133,102 +142,117 @@ export function EntityPage({ config }: { config: EntityPageConfig }) {
     employeeFilter.teamId,
     filteredEmployeeIds,
     isEmployeePage,
-    shouldShowEmployeeFilter,
+    shouldShowEmployeeFilter
   ]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
       const payload = normalizePayload(form, config.fields, refs);
-      if (editing?.id) return updateEntity(config.apiPath, editing.id, payload);
+
+      if (editing?.id) {
+        return updateEntity(config.apiPath, editing.id, payload);
+      }
+
       return createEntity(config.apiPath, payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [config.apiPath] });
-      queryClient.invalidateQueries({ queryKey: ["references"] });
+      queryClient.invalidateQueries({ queryKey: ['references'] });
       queryClient.invalidateQueries({
-        queryKey: ["team-members-for-contract-filter"],
+        queryKey: ['team-members-for-contract-filter']
       });
       setEditing(null);
       setForm(emptyForm(config.fields));
-    },
+    }
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteEntity(config.apiPath, id),
     onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: [config.apiPath] }),
+      queryClient.invalidateQueries({ queryKey: [config.apiPath] })
   });
 
   const addTeamMemberMutation = useMutation({
     mutationFn: async (employeeIds: string[]) =>
       Promise.all(
         employeeIds.map((employeeId) =>
-          createEntity("/team-members", {
+          createEntity('/team-members', {
             teamId: selectedTeam?.id,
             employeeId,
             joinedDate: new Date().toISOString().slice(0, 10),
-            leader: false,
-          }),
-        ),
+            leader: false
+          })
+        )
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["team-members-for-contract-filter"],
+        queryKey: ['team-members-for-contract-filter']
       });
-      queryClient.invalidateQueries({ queryKey: ["references"] });
-      setMemberEmployeeId("");
+      queryClient.invalidateQueries({ queryKey: ['references'] });
+      setMemberEmployeeId('');
       setMemberDialogOpen(false);
-    },
+    }
   });
 
   const removeTeamMemberMutation = useMutation({
-    mutationFn: (id: string) => deleteEntity("/team-members", id),
+    mutationFn: (id: string) => deleteEntity('/team-members', id),
     onSuccess: () =>
       queryClient.invalidateQueries({
-        queryKey: ["team-members-for-contract-filter"],
-      }),
+        queryKey: ['team-members-for-contract-filter']
+      })
   });
 
   const visibleFields = useMemo(
     () =>
-      config.fields.filter((field) => !field.hidden && field.type !== "hidden"),
-    [config.fields],
+      config.fields.filter((field) => !field.hidden && field.type !== 'hidden'),
+    [config.fields]
   );
+
   const columns = useMemo(
     () =>
       visibleFields
-        .filter((field) => !field.key.toLowerCase().includes("password"))
+        .filter((field) => !field.key.toLowerCase().includes('password'))
         .slice(0, 9),
-    [visibleFields],
+    [visibleFields]
   );
+
   const selectedTeamMembers = useMemo(() => {
     if (!selectedTeam?.id) return [];
     return teamMembers.filter(
-      (member) => String(member.teamId) === String(selectedTeam.id),
+      (member) => String(member.teamId) === String(selectedTeam.id)
     );
   }, [selectedTeam?.id, teamMembers]);
+
   const selectedTeamEmployeeIds = useMemo(
     () =>
       new Set(selectedTeamMembers.map((member) => String(member.employeeId))),
-    [selectedTeamMembers],
+    [selectedTeamMembers]
   );
+
   const availableTeamEmployees = useMemo(() => {
     return (refs.employees ?? []).filter(
-      (employee) => !selectedTeamEmployeeIds.has(String(employee.id)),
+      (employee) => !selectedTeamEmployeeIds.has(String(employee.id))
     );
   }, [refs.employees, selectedTeamEmployeeIds]);
 
   useEffect(() => {
     if (!selectedTeam?.id) return;
+
     const freshTeam = data.find(
-      (row) => String(row.id) === String(selectedTeam.id),
+      (row) => String(row.id) === String(selectedTeam.id)
     );
-    if (freshTeam) setSelectedTeam(freshTeam);
+
+    if (freshTeam) {
+      setSelectedTeam(freshTeam);
+    }
   }, [data, selectedTeam?.id]);
 
   function startEdit(row: BaseEntity) {
     setEditing(row);
-    setForm({ ...emptyForm(config.fields), ...row });
+    setForm({
+      ...emptyForm(config.fields),
+      ...row
+    });
   }
 
   function submit(e: FormEvent) {
@@ -239,78 +263,102 @@ export function EntityPage({ config }: { config: EntityPageConfig }) {
   return (
     <section>
       <h2>{config.title}</h2>
+
       {shouldShowEmployeeFilter && (
         <EmployeeSearchFilter
           value={employeeFilter}
           onChange={(next) => {
             setEmployeeFilter(next);
-            setForm((prev) => ({ ...prev, employeeId: next.employeeId || "" }));
+            setForm((prev) => ({
+              ...prev,
+              employeeId: next.employeeId || ''
+            }));
           }}
           employees={refs.employees ?? []}
           teams={refs.teams ?? []}
           teamMembers={teamMembers}
         />
       )}
-      <div className={isReadOnly ? "grid-one" : "grid-two"}>
-        {!isReadOnly && <form className="card form-grid" onSubmit={submit}>
-          <h3>{editing ? "Cập nhật" : "Tạo mới"}</h3>
-          {visibleFields.map((field) =>
-            renderField(field, form, setForm, effectiveRefs),
-          )}
-          <div className="form-actions">
-            <button type="submit">{editing ? "Lưu" : "Tạo"}</button>
-            {editing && (
-              <button
-                type="button"
-                className="secondary"
-                onClick={() => {
-                  setEditing(null);
-                  setForm(emptyForm(config.fields));
-                }}
-              >
-                Hủy
-              </button>
+
+      <div className={isReadOnly ? 'grid-one' : 'grid-two'}>
+        {!isReadOnly && (
+          <form className="card form-grid" onSubmit={submit}>
+            <h3>{editing ? 'Cập nhật' : 'Tạo mới'}</h3>
+
+            {visibleFields.map((field) =>
+              renderField(field, form, setForm, effectiveRefs)
             )}
-          </div>
-        </form>}
-        <div className={`card table-wrap ${isReadOnly ? "wide" : ""}`.trim()}>
+
+            <div className="form-actions">
+              <button type="submit">
+                {editing ? 'Lưu' : 'Tạo'}
+              </button>
+
+              {editing && (
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => {
+                    setEditing(null);
+                    setForm(emptyForm(config.fields));
+                  }}
+                >
+                  Hủy
+                </button>
+              )}
+            </div>
+          </form>
+        )}
+
+        <div className={`card table-wrap ${isReadOnly ? 'wide' : ''}`.trim()}>
           <h3>Danh sách</h3>
+
           {isLoading ? (
             <p>Đang tải...</p>
           ) : (
             <table>
               <thead>
                 <tr>
-                  {columns.map((c) => (
-                    <th key={c.key}>{c.label}</th>
+                  {columns.map((column) => (
+                    <th key={column.key}>{column.label}</th>
                   ))}
                   {!isReadOnly && <th>Thao tác</th>}
                 </tr>
               </thead>
+
               <tbody>
                 {visibleData.map((row) => (
                   <tr
                     key={row.id as string}
-                    className={isTeamPage ? "clickable-row" : ""}
+                    className={isTeamPage ? 'clickable-row' : ''}
                     onClick={() => isTeamPage && setSelectedTeam(row)}
                   >
-                    {columns.map((c) => (
-                      <td key={c.key}>{formatCell(c, row[c.key], refs)}</td>
+                    {columns.map((column) => (
+                      <td key={column.key}>
+                        {formatCell(column, row[column.key], refs)}
+                      </td>
                     ))}
-                    {!isReadOnly && <td
-                      className="actions"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <button className="small" onClick={() => startEdit(row)}>
-                        Sửa
-                      </button>
-                      <button
-                        className="small danger"
-                        onClick={() => row.id && deleteMutation.mutate(row.id)}
+
+                    {!isReadOnly && (
+                      <td
+                        className="actions"
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        Xóa
-                      </button>
-                    </td>}
+                        <button
+                          className="small"
+                          onClick={() => startEdit(row)}
+                        >
+                          Sửa
+                        </button>
+
+                        <button
+                          className="small danger"
+                          onClick={() => row.id && deleteMutation.mutate(row.id)}
+                        >
+                          Xóa
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -318,6 +366,7 @@ export function EntityPage({ config }: { config: EntityPageConfig }) {
           )}
         </div>
       </div>
+
       {isTeamPage && selectedTeam && (
         <TeamMemberPanel
           team={selectedTeam}
@@ -331,7 +380,9 @@ export function EntityPage({ config }: { config: EntityPageConfig }) {
           dialogOpen={memberDialogOpen}
           setDialogOpen={setMemberDialogOpen}
           canManage={canManageTeamMembers}
-          onAdd={(employeeIds) => employeeIds.length > 0 && addTeamMemberMutation.mutate(employeeIds)}
+          onAdd={(employeeIds) =>
+            employeeIds.length > 0 && addTeamMemberMutation.mutate(employeeIds)
+          }
           onRemove={(id) => removeTeamMemberMutation.mutate(id)}
           saving={
             addTeamMemberMutation.isPending ||
@@ -350,13 +401,19 @@ function RequiredMark({ required }: { required?: boolean }) {
 function renderField(
   field: FieldConfig,
   form: BaseEntity,
-  setForm: (v: BaseEntity) => void,
-  refs: ReturnType<typeof useReferences>,
+  setForm: (value: BaseEntity) => void,
+  refs: ReturnType<typeof useReferences>
 ) {
-  const value = form[field.key] ?? "";
-  const update = (next: unknown) => setForm({ ...form, [field.key]: next });
+  const value = form[field.key] ?? '';
+  const update = (next: unknown) =>
+    setForm({
+      ...form,
+      [field.key]: next
+    });
+
   if (field.ref) {
     const options = refs[field.ref] ?? [];
+
     return (
       <label key={field.key}>
         {field.label}
@@ -367,39 +424,77 @@ function renderField(
           onChange={(e) => update(e.target.value)}
         >
           <option value="">-- chọn --</option>
-          {options.map((opt) => (
-            <option key={String(opt.id)} value={String(opt.id)}>
-              {displayEntity(opt)}
+          {options.map((option) => (
+            <option key={String(option.id)} value={String(option.id)}>
+              {displayEntity(option)}
             </option>
           ))}
         </select>
       </label>
     );
   }
+
+  if (field.type === 'date') {
+    return (
+      <AppDatePicker
+        key={field.key}
+        label={field.label}
+        required={field.required}
+        value={String(value)}
+        onChange={(next) => update(next)}
+      />
+    );
+  }
+
+  if (field.type === 'time') {
+    return (
+      <AppTimePicker
+        key={field.key}
+        label={field.label}
+        required={field.required}
+        value={String(value)}
+        onChange={(next) => update(next)}
+      />
+    );
+  }
+
+  if (field.type === 'datetime-local') {
+    return (
+      <AppDateTimePicker
+        key={field.key}
+        label={field.label}
+        required={field.required}
+        value={String(value)}
+        onChange={(next) => update(next)}
+      />
+    );
+  }
+
   return (
     <label key={field.key}>
       {field.label}
       <RequiredMark required={field.required} />
-      {field.type === "select" ? (
+
+      {field.type === 'select' ? (
         <select
           required={field.required}
           value={String(value)}
           onChange={(e) => update(e.target.value)}
         >
           <option value="">-- chọn --</option>
-          {field.options?.map((opt) => (
-            <option key={opt} value={opt}>
-              {optionLabel(opt)}
+          {field.options?.map((option) => (
+            <option key={option} value={option}>
+              {optionLabel(option)}
             </option>
           ))}
         </select>
-      ) : field.type === "textarea" ? (
+      ) : field.type === 'textarea' ? (
         <textarea
           required={field.required}
           value={String(value)}
           onChange={(e) => update(e.target.value)}
         />
-      ) : field.type === "checkbox" ? (
+      ) : field.type === 'checkbox' ? (
         <input
           type="checkbox"
           checked={Boolean(value)}
@@ -408,11 +503,15 @@ function renderField(
       ) : (
         <input
           required={field.required}
-          type={field.type ?? "text"}
+          type={field.type ?? 'text'}
           value={String(value)}
           onChange={(e) =>
             update(
-              field.type === "number" ? Number(e.target.value) : e.target.value,
+              field.type === 'number'
+                ? e.target.value === ''
+                  ? ''
+                  : Number(e.target.value)
+                : e.target.value
             )
           }
         />
@@ -424,48 +523,64 @@ function renderField(
 function normalizePayload(
   form: BaseEntity,
   fields: FieldConfig[],
-  refs: Partial<Record<ReferenceKey, BaseEntity[]>>,
+  refs: Partial<Record<ReferenceKey, BaseEntity[]>>
 ) {
   const payload: BaseEntity = {};
+
   fields.forEach((field) => {
     let value = form[field.key];
+
     if (
-      (value === "" || value === undefined || value === null) &&
+      (value === '' || value === undefined || value === null) &&
       field.defaultValue !== undefined
     ) {
       value = field.defaultValue;
     }
+
     if (
-      (value === "" || value === undefined || value === null) &&
+      (value === '' || value === undefined || value === null) &&
       field.defaultRef
     ) {
       value = refs[field.defaultRef]?.[0]?.id ?? null;
     }
-    if (["id", "createdAt", "updatedAt"].includes(field.key)) return;
-    if (value === "") payload[field.key] = null;
-    else payload[field.key] = value;
+
+    if (['id', 'createdAt', 'updatedAt'].includes(field.key)) return;
+
+    if (value === '') {
+      payload[field.key] = null;
+    } else {
+      payload[field.key] = value;
+    }
   });
+
   return payload;
 }
 
 function formatCell(
   field: FieldConfig,
   value: unknown,
-  refs: ReturnType<typeof useReferences>,
+  refs: ReturnType<typeof useReferences>
 ) {
-  if (value === null || value === undefined) return "";
+  if (value === null || value === undefined) return '';
   if (field.ref) return findDisplay(refs, field.ref, value);
-  if (typeof value === "boolean") return value ? "Có" : "Không";
+  if (typeof value === 'boolean') return value ? 'Có' : 'Không';
+
   if (
-    field.type === "select" ||
-    field.key.toLowerCase().includes("status") ||
-    field.key.toLowerCase().endsWith("type")
-  )
+    field.type === 'select' ||
+    field.key.toLowerCase().includes('status') ||
+    field.key.toLowerCase().endsWith('type')
+  ) {
     return viLabel(value);
-  if (typeof value === "string" && value.includes("T"))
-    return value.replace("T", " ").slice(0, 16);
-  if (typeof value === "string" && value.length > 36)
-    return value.slice(0, 36) + "...";
+  }
+
+  if (typeof value === 'string' && value.includes('T')) {
+    return value.replace('T', ' ').slice(0, 16);
+  }
+
+  if (typeof value === 'string' && value.length > 36) {
+    return value.slice(0, 36) + '...';
+  }
+
   return String(value);
 }
 
@@ -483,7 +598,7 @@ function TeamMemberPanel({
   canManage,
   onAdd,
   onRemove,
-  saving,
+  saving
 }: {
   team: BaseEntity;
   members: TeamMember[];
@@ -502,19 +617,25 @@ function TeamMemberPanel({
 }) {
   const employeeById = useMemo(
     () => new Map(employees.map((employee) => [String(employee.id), employee])),
-    [employees],
+    [employees]
   );
+
   const [dialogFilter, setDialogFilter] = useState<EmployeeSearchValue>({
     teamId: '',
     keyword: '',
-    employeeId: memberEmployeeId,
+    employeeId: memberEmployeeId
   });
+
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<Set<string>>(
-    () => new Set(),
+    () => new Set()
   );
 
   useEffect(() => {
-    setDialogFilter({ teamId: '', keyword: '', employeeId: memberEmployeeId });
+    setDialogFilter({
+      teamId: '',
+      keyword: '',
+      employeeId: memberEmployeeId
+    });
     setSelectedEmployeeIds(new Set());
   }, [memberEmployeeId, team.id]);
 
@@ -523,34 +644,54 @@ function TeamMemberPanel({
       availableEmployees,
       teamMembers,
       dialogFilter.teamId,
-      dialogFilter.keyword,
+      dialogFilter.keyword
     );
+
     if (dialogFilter.employeeId) {
       rows = rows.filter(
-        (employee) => String(employee.id) === String(dialogFilter.employeeId),
+        (employee) => String(employee.id) === String(dialogFilter.employeeId)
       );
     }
+
     return rows;
-  }, [availableEmployees, dialogFilter.employeeId, dialogFilter.keyword, dialogFilter.teamId, teamMembers]);
+  }, [
+    availableEmployees,
+    dialogFilter.employeeId,
+    dialogFilter.keyword,
+    dialogFilter.teamId,
+    teamMembers
+  ]);
 
   function toggleEmployee(employeeId: string, checked: boolean) {
     setSelectedEmployeeIds((prev) => {
       const next = new Set(prev);
-      if (checked) next.add(employeeId);
-      else next.delete(employeeId);
+
+      if (checked) {
+        next.add(employeeId);
+      } else {
+        next.delete(employeeId);
+      }
+
       return next;
     });
+
     setMemberEmployeeId(checked ? employeeId : '');
   }
 
   function selectAllVisible(checked: boolean) {
     setSelectedEmployeeIds((prev) => {
       const next = new Set(prev);
+
       candidateEmployees.forEach((employee) => {
         const id = String(employee.id);
-        if (checked) next.add(id);
-        else next.delete(id);
+
+        if (checked) {
+          next.add(id);
+        } else {
+          next.delete(id);
+        }
       });
+
       return next;
     });
   }
@@ -567,12 +708,14 @@ function TeamMemberPanel({
           </h3>
           <span>{members.length} thành viên</span>
         </div>
+
         {canManage && (
           <button type="button" onClick={() => setDialogOpen(true)}>
             Thêm thành viên
           </button>
         )}
       </div>
+
       <table>
         <thead>
           <tr>
@@ -584,9 +727,11 @@ function TeamMemberPanel({
             {canManage && <th>Thao tác</th>}
           </tr>
         </thead>
+
         <tbody>
           {members.map((member) => {
             const employee = employeeById.get(String(member.employeeId));
+
             return (
               <tr key={String(member.id)}>
                 <td>{String(employee?.employeeCode ?? '')}</td>
@@ -594,6 +739,7 @@ function TeamMemberPanel({
                 <td>{String(employee?.email ?? '')}</td>
                 <td>{member.leader ? 'Leader' : 'Thành viên'}</td>
                 <td>{String(member.joinedDate ?? '')}</td>
+
                 {canManage && (
                   <td>
                     <button
@@ -609,9 +755,12 @@ function TeamMemberPanel({
               </tr>
             );
           })}
+
           {members.length === 0 && (
             <tr>
-              <td colSpan={canManage ? 6 : 5}>Team này chưa có thành viên.</td>
+              <td colSpan={canManage ? 6 : 5}>
+                Team này chưa có thành viên.
+              </td>
             </tr>
           )}
         </tbody>
@@ -628,7 +777,12 @@ function TeamMemberPanel({
                   hệ thống sẽ tự chuyển nhân viên sang team này.
                 </p>
               </div>
-              <button type="button" className="secondary" onClick={() => setDialogOpen(false)}>
+
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setDialogOpen(false)}
+              >
                 Đóng
               </button>
             </div>
@@ -637,7 +791,10 @@ function TeamMemberPanel({
               value={dialogFilter}
               onChange={(next) => {
                 setDialogFilter(next);
-                if (next.employeeId) setSelectedEmployeeIds(new Set([next.employeeId]));
+
+                if (next.employeeId) {
+                  setSelectedEmployeeIds(new Set([next.employeeId]));
+                }
               }}
               employees={availableEmployees}
               teams={teams}
@@ -648,6 +805,7 @@ function TeamMemberPanel({
 
             <div className="team-dialog-toolbar">
               <span>Đã chọn {selectedCount} nhân viên</span>
+
               <div className="form-actions">
                 <button
                   type="button"
@@ -657,6 +815,7 @@ function TeamMemberPanel({
                 >
                   Chọn tất cả đang hiển thị
                 </button>
+
                 <button
                   type="button"
                   className="secondary"
@@ -665,6 +824,7 @@ function TeamMemberPanel({
                 >
                   Bỏ chọn
                 </button>
+
                 <button
                   type="button"
                   onClick={() => onAdd(Array.from(selectedEmployeeIds))}
@@ -682,7 +842,12 @@ function TeamMemberPanel({
                     <th>
                       <input
                         type="checkbox"
-                        checked={candidateEmployees.length > 0 && candidateEmployees.every((employee) => selectedEmployeeIds.has(String(employee.id)))}
+                        checked={
+                          candidateEmployees.length > 0 &&
+                          candidateEmployees.every((employee) =>
+                            selectedEmployeeIds.has(String(employee.id))
+                          )
+                        }
                         onChange={(e) => selectAllVisible(e.target.checked)}
                       />
                     </th>
@@ -692,11 +857,19 @@ function TeamMemberPanel({
                     <th>SĐT</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   {candidateEmployees.map((employee) => {
                     const id = String(employee.id);
+
                     return (
-                      <tr key={id} className="clickable-row" onClick={() => toggleEmployee(id, !selectedEmployeeIds.has(id))}>
+                      <tr
+                        key={id}
+                        className="clickable-row"
+                        onClick={() =>
+                          toggleEmployee(id, !selectedEmployeeIds.has(id))
+                        }
+                      >
                         <td onClick={(e) => e.stopPropagation()}>
                           <input
                             type="checkbox"
@@ -711,9 +884,12 @@ function TeamMemberPanel({
                       </tr>
                     );
                   })}
+
                   {candidateEmployees.length === 0 && (
                     <tr>
-                      <td colSpan={5}>Không có nhân viên phù hợp với bộ lọc.</td>
+                      <td colSpan={5}>
+                        Không có nhân viên phù hợp với bộ lọc.
+                      </td>
                     </tr>
                   )}
                 </tbody>
