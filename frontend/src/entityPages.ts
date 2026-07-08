@@ -62,7 +62,7 @@ export const entityPages: EntityPageConfig[] = [
     { key: 'accountStatus', label: 'Trạng thái tài khoản', type: 'select', options: ['ACTIVE', 'LOCKED', 'DISABLED'], required: true, defaultValue: 'ACTIVE' },
     { key: 'initialPassword', label: 'Mật khẩu ban đầu / đặt lại mật khẩu' }
   ]},
-  { path: 'shifts', title: 'Ca làm việc', apiPath: '/shifts', pageNote: 'Các trường có dấu * là bắt buộc. Đây là lịch làm chuẩn dùng để gắn vào Loại hợp đồng.', fields: [
+  { path: 'shifts', title: 'Ca làm việc', apiPath: '/shifts', pageNote: 'Sau khi chọn giờ vào/ra và giờ nghỉ trưa, hệ thống sẽ tự tính Số phút nghỉ và Số phút làm chuẩn.', fields: [
     defaultCompanyField,
     { key: 'code', label: 'Mã lịch', required: true },
     { key: 'name', label: 'Tên lịch', required: true },
@@ -73,24 +73,19 @@ export const entityPages: EntityPageConfig[] = [
     { key: 'lunchBreakMinutes', label: 'Số phút nghỉ', type: 'number', required: true, defaultValue: 60 },
     { key: 'workingMinutes', label: 'Số phút làm chuẩn', type: 'number', required: true, defaultValue: 480 },
     { key: 'minWorkingMinutesPerDay', label: 'Phút tối thiểu/ngày', type: 'number', required: true, defaultValue: 480 },
-    { key: 'lateToleranceMinutes', label: 'Cho phép muộn/phút', type: 'number', required: true, defaultValue: 5 },
-    { key: 'earlyLeaveToleranceMinutes', label: 'Cho phép về sớm/phút', type: 'number', required: true, defaultValue: 5 },
     { key: 'crossDay', label: 'Qua ngày', type: 'checkbox', defaultValue: false },
     { key: 'flexible', label: 'Linh hoạt', type: 'checkbox', defaultValue: false },
+    { key: 'lateToleranceMinutes', label: 'Cho phép muộn/phút', type: 'number', required: true, defaultValue: 0 },
+    { key: 'earlyLeaveToleranceMinutes', label: 'Cho phép về sớm/phút', type: 'number', required: true, defaultValue: 0 },
     { key: 'remoteAllowed', label: 'Cho remote', type: 'checkbox', defaultValue: false },
     { key: 'status', label: 'Trạng thái', type: 'select', options: ['ACTIVE', 'INACTIVE'], required: true, defaultValue: 'ACTIVE' }
   ]},
-  { path: 'contract-types', title: 'Chính sách hợp đồng', apiPath: '/contract-types', pageNote: 'Mỗi loại hợp đồng cần chọn Lịch/Ca làm việc mặc định để hệ thống tính công theo giờ chuẩn.', fields: [
+  { path: 'contract-types', title: 'Chính sách hợp đồng', apiPath: '/contract-types', pageNote: 'Giờ/ngày được tự tính từ Số phút làm chuẩn của Lịch/Ca làm việc mặc định.', fields: [
     { key: 'code', label: 'Mã loại hợp đồng', required: true },
     { key: 'name', label: 'Tên loại hợp đồng', required: true },
     { key: 'description', label: 'Mô tả', type: 'textarea' },
     { key: 'defaultShiftId', label: 'Lịch/Ca làm việc mặc định', ref: 'shifts', required: true },
-    { key: 'defaultWorkingHoursPerDay', label: 'Giờ/ngày', type: 'number', required: true, defaultValue: 8 },
-    { key: 'defaultWorkingDaysPerMonth', label: 'Ngày/tháng', type: 'number', required: true, defaultValue: 22 },
-    { key: 'allowOvertime', label: 'Cho phép OT', type: 'checkbox', defaultValue: true },
-    { key: 'allowRemoteWork', label: 'Cho phép remote', type: 'checkbox', defaultValue: false },
-    { key: 'requireAttendanceDevice', label: 'Bắt buộc máy chấm công', type: 'checkbox', defaultValue: true },
-    { key: 'requireLeaderApproval', label: 'Cần leader duyệt', type: 'checkbox', defaultValue: true }
+    { key: 'defaultWorkingHoursPerDay', label: 'Giờ/ngày', type: 'number', required: true, defaultValue: 8 }
   ]},
   { path: 'employee-contracts', title: 'Gán loại hợp đồng cho nhân viên', apiPath: '/employee-contracts', teamFilter: true, fields: [
     { key: 'employeeId', label: 'Nhân viên', ref: 'employees', required: true },
@@ -100,14 +95,6 @@ export const entityPages: EntityPageConfig[] = [
     { key: 'endDate', label: 'Ngày kết thúc', type: 'date' },
     { key: 'salaryType', label: 'Loại lương', type: 'select', options: ['MONTHLY', 'HOURLY', 'DAILY'], required: true, defaultValue: 'MONTHLY' },
     { key: 'status', label: 'Trạng thái', type: 'select', options: ['DRAFT', 'ACTIVE', 'EXPIRED', 'TERMINATED'], required: true, defaultValue: 'ACTIVE' }
-  ]},
-  { path: 'schedules', title: 'Lịch làm việc cá nhân', apiPath: '/schedules', hiddenInMenu: true, pageNote: 'Trang này chỉ dùng cho ngoại lệ theo từng ngày của từng nhân viên: đổi ca, nghỉ, remote, công tác. Nếu không có ngoại lệ, hệ thống dùng lịch mặc định từ Loại hợp đồng.', fields: [
-    { key: 'employeeId', label: 'Nhân viên', ref: 'employees', required: true },
-    { key: 'workDate', label: 'Ngày', type: 'date', required: true },
-    { key: 'shiftId', label: 'Lịch/Ca làm việc', ref: 'shifts' },
-    { key: 'scheduleType', label: 'Loại lịch', type: 'select', options: ['WORKING', 'DAY_OFF', 'HOLIDAY', 'REMOTE', 'LEAVE', 'BUSINESS_TRIP'], required: true, defaultValue: 'WORKING' },
-    { key: 'sourceType', label: 'Nguồn', type: 'select', options: ['MANUAL', 'IMPORT_EXCEL', 'AUTO_GENERATED', 'REQUEST_APPROVED'], required: true, defaultValue: 'MANUAL' },
-    { key: 'note', label: 'Ghi chú' }
   ]},
   { path: 'holidays', title: 'Ngày nghỉ lễ', apiPath: '/holidays', pageNote: 'Ngày nghỉ lễ trong hệ thống luôn được tính là nghỉ có lương. Nếu nhân viên vẫn chấm công trong ngày này, thời gian làm sẽ được tính vào OT.', fields: [
     defaultCompanyField,

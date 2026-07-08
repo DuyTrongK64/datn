@@ -27,6 +27,7 @@ import {
 } from '../components/EmployeeSearchFilter';
 import { AppDatePicker, AppDateTimePicker, AppTimePicker } from '../components/AppDatePickers';
 import { optionLabel, viLabel } from '../utils/labels';
+import { formatLeaveDayHours, isLeaveDayField } from '../utils/leaveFormat';
 
 function defaultValueFor(field: FieldConfig) {
   if (field.defaultValue !== undefined) return field.defaultValue;
@@ -40,6 +41,81 @@ function emptyForm(fields: FieldConfig[]): BaseEntity {
     result[field.key] = defaultValueFor(field);
   });
   return result;
+}
+
+function numberValue(value: unknown, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function timeToMinutes(value: unknown) {
+  if (!value) return null;
+  const [hour, minute] = String(value).split(':').map(Number);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
+  return hour * 60 + minute;
+}
+
+function minutesBetween(start: unknown, end: unknown, allowCrossDay = false) {
+  const startMinutes = timeToMinutes(start);
+  const endMinutes = timeToMinutes(end);
+
+  if (startMinutes === null || endMinutes === null) return 0;
+
+  let diff = endMinutes - startMinutes;
+  if (diff < 0 || allowCrossDay) diff += 24 * 60;
+
+  return Math.max(0, diff);
+}
+
+function shiftDerivedValues(form: BaseEntity) {
+  const crossDay = Boolean(form.crossDay);
+  const lunchBreakMinutes = minutesBetween(form.lunchStartTime, form.lunchEndTime, true);
+  const totalMinutes = minutesBetween(form.startTime, form.endTime, crossDay);
+  const workingMinutes = Math.max(0, totalMinutes - lunchBreakMinutes);
+
+  return {
+    lunchBreakMinutes,
+    workingMinutes,
+    minWorkingMinutesPerDay: workingMinutes
+  };
+}
+
+function contractHoursFromShift(form: BaseEntity, refs: Partial<Record<ReferenceKey, BaseEntity[]>>) {
+  const shift = refs.shifts?.find((item) => String(item.id) === String(form.defaultShiftId));
+
+  if (!shift) {
+    return numberValue(form.defaultWorkingHoursPerDay, 8);
+  }
+
+  const workingMinutes = numberValue(shift.workingMinutes, 480);
+  return Math.max(1, Math.round(workingMinutes / 60));
+}
+
+function prepareFormForSave(
+  form: BaseEntity,
+  pagePath: string,
+  refs: Partial<Record<ReferenceKey, BaseEntity[]>>
+) {
+  if (pagePath === 'shifts') {
+    const derived = shiftDerivedValues(form);
+    const flexible = Boolean(form.flexible);
+
+    return {
+      ...form,
+      ...derived,
+      lateToleranceMinutes: flexible ? numberValue(form.lateToleranceMinutes, 0) : 0,
+      earlyLeaveToleranceMinutes: flexible ? numberValue(form.earlyLeaveToleranceMinutes, 0) : 0
+    };
+  }
+
+  if (pagePath === 'contract-types') {
+    return {
+      ...form,
+      defaultWorkingHoursPerDay: contractHoursFromShift(form, refs)
+    };
+  }
+
+  return form;
 }
 
 export function EntityPage({ config }: { config: EntityPageConfig }) {
@@ -82,6 +158,56 @@ export function EntityPage({ config }: { config: EntityPageConfig }) {
     config.teamFilter || config.employeeFilter || isEmployeePage
   );
 
+  useEffect(() => {
+    if (config.path !== 'shifts') return;
+
+    const derived = shiftDerivedValues(form);
+    const shouldPatch =
+      numberValue(form.lunchBreakMinutes) !== derived.lunchBreakMinutes ||
+      numberValue(form.workingMinutes) !== derived.workingMinutes ||
+      numberValue(form.minWorkingMinutesPerDay) !== derived.minWorkingMinutesPerDay ||
+      (!form.flexible && (numberValue(form.lateToleranceMinutes) !== 0 || numberValue(form.earlyLeaveToleranceMinutes) !== 0));
+
+    if (!shouldPatch) return;
+
+    setForm((prev) => ({
+      ...prev,
+      ...derived,
+      lateToleranceMinutes: prev.flexible ? prev.lateToleranceMinutes : 0,
+      earlyLeaveToleranceMinutes: prev.flexible ? prev.earlyLeaveToleranceMinutes : 0
+    }));
+  }, [
+    config.path,
+    form.startTime,
+    form.endTime,
+    form.lunchStartTime,
+    form.lunchEndTime,
+    form.crossDay,
+    form.flexible,
+    form.lunchBreakMinutes,
+    form.workingMinutes,
+    form.minWorkingMinutesPerDay,
+    form.lateToleranceMinutes,
+    form.earlyLeaveToleranceMinutes
+  ]);
+
+  useEffect(() => {
+    if (config.path !== 'contract-types') return;
+
+    const nextHours = contractHoursFromShift(form, refs);
+    if (numberValue(form.defaultWorkingHoursPerDay, 8) === nextHours) return;
+
+    setForm((prev) => ({
+      ...prev,
+      defaultWorkingHoursPerDay: nextHours
+    }));
+  }, [
+    config.path,
+    form.defaultShiftId,
+    form.defaultWorkingHoursPerDay,
+    refs
+  ]);
+
   const filteredEmployees = useMemo(() => {
     if (!shouldShowEmployeeFilter) return refs.employees ?? [];
 
@@ -106,6 +232,7 @@ export function EntityPage({ config }: { config: EntityPageConfig }) {
 
   const effectiveRefs = useMemo(() => {
     if (!shouldShowEmployeeFilter) return refs;
+
     return {
       ...refs,
       employees: filteredEmployees
@@ -147,7 +274,8 @@ export function EntityPage({ config }: { config: EntityPageConfig }) {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const payload = normalizePayload(form, config.fields, refs);
+      const preparedForm = prepareFormForSave(form, config.path, refs);
+      const payload = normalizePayload(preparedForm, config.fields, refs);
 
       if (editing?.id) {
         return updateEntity(config.apiPath, editing.id, payload);
@@ -264,6 +392,10 @@ export function EntityPage({ config }: { config: EntityPageConfig }) {
     <section>
       <h2>{config.title}</h2>
 
+      {config.pageNote && (
+        <p className="hint">{config.pageNote}</p>
+      )}
+
       {shouldShowEmployeeFilter && (
         <EmployeeSearchFilter
           value={employeeFilter}
@@ -286,7 +418,19 @@ export function EntityPage({ config }: { config: EntityPageConfig }) {
             <h3>{editing ? 'Cập nhật' : 'Tạo mới'}</h3>
 
             {visibleFields.map((field) =>
-              renderField(field, form, setForm, effectiveRefs)
+              renderField(field, form, setForm, effectiveRefs, config.path)
+            )}
+
+            {config.path === 'shifts' && (
+              <div className="shift-derived-note">
+                Số phút nghỉ và Số phút làm chuẩn được tự tính từ giờ ca và giờ nghỉ trưa.
+              </div>
+            )}
+
+            {config.path === 'contract-types' && (
+              <div className="contract-derived-note">
+                Giờ/ngày được tự tính từ Số phút làm chuẩn của ca làm việc đã chọn.
+              </div>
             )}
 
             <div className="form-actions">
@@ -398,11 +542,39 @@ function RequiredMark({ required }: { required?: boolean }) {
   return required ? <span className="required-mark"> *</span> : null;
 }
 
+function PrettyCheckbox({
+  label,
+  checked,
+  onChange,
+  hint
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  hint?: string;
+}) {
+  return (
+    <label className={`pretty-checkbox ${checked ? 'checked' : ''}`}>
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+      <span className="switch-track" />
+      <span className="checkbox-text">
+        <span className="checkbox-label">{label}</span>
+        {hint && <span className="checkbox-hint">{hint}</span>}
+      </span>
+    </label>
+  );
+}
+
 function renderField(
   field: FieldConfig,
   form: BaseEntity,
   setForm: (value: BaseEntity) => void,
-  refs: ReturnType<typeof useReferences>
+  refs: ReturnType<typeof useReferences>,
+  pagePath: string
 ) {
   const value = form[field.key] ?? '';
   const update = (next: unknown) =>
@@ -410,6 +582,50 @@ function renderField(
       ...form,
       [field.key]: next
     });
+
+  if (pagePath === 'shifts') {
+    if (['lateToleranceMinutes', 'earlyLeaveToleranceMinutes'].includes(field.key) && !form.flexible) {
+      return null;
+    }
+
+    if (['lunchBreakMinutes', 'workingMinutes', 'minWorkingMinutesPerDay'].includes(field.key)) {
+      return (
+        <label key={field.key} className="computed-field">
+          <span className="computed-label">
+            {field.label}
+            <RequiredMark required={field.required} />
+          </span>
+          <input
+            required={field.required}
+            type="number"
+            value={String(value)}
+            readOnly
+            tabIndex={-1}
+          />
+          <span className="computed-help">Tự tính theo giờ ca và giờ nghỉ trưa</span>
+        </label>
+      );
+    }
+  }
+
+  if (pagePath === 'contract-types' && field.key === 'defaultWorkingHoursPerDay') {
+    return (
+      <label key={field.key} className="computed-field">
+        <span className="computed-label">
+          {field.label}
+          <RequiredMark required={field.required} />
+        </span>
+        <input
+          required={field.required}
+          type="number"
+          value={String(value)}
+          readOnly
+          tabIndex={-1}
+        />
+        <span className="computed-help">Tự tính từ Số phút làm chuẩn của ca đã chọn</span>
+      </label>
+    );
+  }
 
   if (field.ref) {
     const options = refs[field.ref] ?? [];
@@ -470,6 +686,22 @@ function renderField(
     );
   }
 
+  if (field.type === 'checkbox') {
+    return (
+      <PrettyCheckbox
+        key={field.key}
+        label={field.label}
+        checked={Boolean(value)}
+        onChange={update}
+        hint={
+          field.key === 'flexible'
+            ? 'Bật để cấu hình số phút được phép đi muộn/về sớm'
+            : undefined
+        }
+      />
+    );
+  }
+
   return (
     <label key={field.key}>
       {field.label}
@@ -493,12 +725,6 @@ function renderField(
           required={field.required}
           value={String(value)}
           onChange={(e) => update(e.target.value)}
-        />
-      ) : field.type === 'checkbox' ? (
-        <input
-          type="checkbox"
-          checked={Boolean(value)}
-          onChange={(e) => update(e.target.checked)}
         />
       ) : (
         <input
@@ -564,6 +790,14 @@ function formatCell(
   if (value === null || value === undefined) return '';
   if (field.ref) return findDisplay(refs, field.ref, value);
   if (typeof value === 'boolean') return value ? 'Có' : 'Không';
+
+  if (field.key === 'defaultWorkingHoursPerDay') {
+    return `${value} giờ`;
+  }
+
+  if (isLeaveDayField(field.key)) {
+    return formatLeaveDayHours(value as number | string);
+  }
 
   if (
     field.type === 'select' ||

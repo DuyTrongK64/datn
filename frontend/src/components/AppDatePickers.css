@@ -1,0 +1,290 @@
+/* Shared MUI date/time picker and special entity form styling */
+
+.app-date-picker,
+.app-time-picker,
+.app-datetime-picker,
+.app-month-picker {
+  min-width: 0;
+}
+
+/* In create/update forms, pickers fill the form column neatly. */
+.form-grid > .app-date-picker,
+.form-grid > .app-time-picker,
+.form-grid > .app-datetime-picker,
+.form-grid > .app-month-picker {
+  width: 100%;
+  min-width: 0;
+  margin-top: 2px;
+}
+
+/* In filter bars, pickers stay compact so other controls remain on the same row. */
+.filters > .app-date-picker,
+.filters > .app-time-picker,
+.filters > .app-datetime-picker,
+.filters > .app-month-picker,
+.request-filters > .app-date-picker,
+.request-filters > .app-time-picker,
+.request-filters > .app-datetime-picker,
+.request-filters > .app-month-picker,
+.attendance-filter-card .filters > .app-date-picker,
+.attendance-filter-card .filters > .app-time-picker,
+.attendance-filter-card .filters > .app-datetime-picker,
+.attendance-filter-card .filters > .app-month-picker {
+  flex: 0 0 154px;
+  width: 154px;
+  min-width: 154px;
+  max-width: 154px;
+  margin-top: 0;
+}
+
+.month-toolbar > .app-month-picker,
+.filters > .app-month-picker {
+  flex-basis: 190px;
+  width: 190px;
+  min-width: 190px;
+  max-width: 190px;
+}
+
+.form-grid > .app-datetime-picker,
+.compact-filter > .app-datetime-picker {
+  min-width: 220px;
+}
+
+.filters > .app-datetime-picker,
+.request-filters > .app-datetime-picker,
+.attendance-filter-card .filters > .app-datetime-picker {
+  flex-basis: 205px;
+  width: 205px;
+  min-width: 205px;
+  max-width: 205px;
+}
+
+/* Prevent old global input CSS from breaking MUI inputs. */
+.form-grid .MuiInputBase-input,
+.filters .MuiInputBase-input,
+.compact-filter .MuiInputBase-input,
+.month-toolbar .MuiInputBase-input,
+.request-filters .MuiInputBase-input,
+.attendance-filter-card .MuiInputBase-input {
+  width: 100% !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  padding: 8.5px 10px !important;
+  margin-top: 0 !important;
+  background: transparent !important;
+  font-size: 13px;
+  box-shadow: none !important;
+}
+
+.form-grid .MuiInputBase-root,
+.filters .MuiInputBase-root,
+.compact-filter .MuiInputBase-root,
+.month-toolbar .MuiInputBase-root,
+.request-filters .MuiInputBase-root,
+.attendance-filter-card .MuiInputBase-root {
+  min-height: 40px;
+  border-radius: 12px;
+  background: #ffffff;
+  font-family: "Segoe UI", Roboto, Arial, Tahoma, sans-serif;
+}
+
+.form-grid .MuiInputLabel-root,
+.filters .MuiInputLabel-root,
+.compact-filter .MuiInputLabel-root,
+.month-toolbar .MuiInputLabel-root,
+.request-filters .MuiInputLabel-root,
+.attendance-filter-card .MuiInputLabel-root {
+  font-size: 13px;
+  font-family: "Segoe UI", Roboto, Arial, Tahoma, sans-serif;
+}
+
+.form-grid .MuiSvgIcon-root,
+.filters .MuiSvgIcon-root,
+.compact-filter .MuiSvgIcon-root,
+.month-toolbar .MuiSvgIcon-root,
+.request-filters .MuiSvgIcon-root,
+.attendance-filter-card .MuiSvgIcon-root {
+  color: #2563eb;
+}
+
+.form-grid .MuiIconButton-root,
+.filters .MuiIconButton-root,
+.compact-filter .MuiIconButton-root,
+.month-toolbar .MuiIconButton-root,
+.request-filters .MuiIconButton-root,
+.attendance-filter-card .MuiIconButton-root {
+  padding: 6px;
+}
+
+.attendance-filter-card .filters,
+.request-filters {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.attendance-filter-card .filters > label,
+.request-filters > label {
+  flex: 0 0 auto;
+  min-width: 150px;
+  max-width: 190px;
+}
+
+.attendance-filter-card .filters select,
+.attendance-filter-card .filters input:not(.MuiInputBase-input),
+.request-filters select,
+.request-filters input:not(.MuiInputBase-input) {
+  height: 40px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.attendance-filter-card .filters > button,
+.request-filters .filter-actions {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.MuiPickersPopper-root {
+  z-index: 2400 !important;
+}
+
+/* Pretty checkbox/switch cards used by Shifts and Contract Types. */
+.pretty-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 46px;
+  padding: 10px 12px;
+  border: 1px solid #dbe4f0;
+  border-radius: 14px;
+  background: #f8fafc;
+  color: #334155;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+}
+
+.pretty-checkbox:hover {
+  border-color: #93c5fd;
+  background: #f8fbff;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, .08);
+}
+
+.pretty-checkbox input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pretty-checkbox .switch-track {
+  width: 44px;
+  height: 24px;
+  flex: 0 0 44px;
+  border-radius: 999px;
+  background: #cbd5e1;
+  position: relative;
+  transition: background .2s ease;
+}
+
+.pretty-checkbox .switch-track::after {
+  content: "";
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #ffffff;
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  box-shadow: 0 2px 5px rgba(15, 23, 42, .25);
+  transition: transform .2s ease;
+}
+
+.pretty-checkbox.checked {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.pretty-checkbox.checked .switch-track {
+  background: #2563eb;
+}
+
+.pretty-checkbox.checked .switch-track::after {
+  transform: translateX(20px);
+}
+
+.pretty-checkbox .checkbox-text {
+  display: grid;
+  gap: 2px;
+}
+
+.pretty-checkbox .checkbox-label {
+  line-height: 1.2;
+}
+
+.pretty-checkbox .checkbox-hint {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.computed-field {
+  display: grid;
+  gap: 6px;
+}
+
+.computed-field .computed-label {
+  font-weight: 700;
+  font-size: 13px;
+  color: #334155;
+}
+
+.computed-field input {
+  background: #f1f5f9 !important;
+  color: #475569;
+  font-weight: 800;
+}
+
+.computed-help {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.shift-derived-note,
+.contract-derived-note {
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+@media (max-width: 1100px) {
+  .attendance-filter-card .filters,
+  .request-filters {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+
+  .filters > .app-date-picker,
+  .filters > .app-time-picker,
+  .filters > .app-datetime-picker,
+  .filters > .app-month-picker,
+  .request-filters > .app-date-picker,
+  .request-filters > .app-time-picker,
+  .request-filters > .app-datetime-picker,
+  .request-filters > .app-month-picker,
+  .attendance-filter-card .filters > .app-date-picker,
+  .attendance-filter-card .filters > .app-time-picker,
+  .attendance-filter-card .filters > .app-datetime-picker,
+  .attendance-filter-card .filters > .app-month-picker {
+    flex: 1 1 160px;
+    width: auto;
+    min-width: 160px;
+    max-width: none;
+  }
+}

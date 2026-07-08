@@ -1,13 +1,25 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { http } from '../api/http';
-import { useAuth } from '../state/AuthContext';
-import type { BaseEntity, Employee, LeaveBalance, SystemTimeSetting, Team, TeamMember } from '../types';
-import { findDisplay, useReferences } from '../hooks/useReferences';
-import { EmployeeSearchFilter, type EmployeeSearchValue, filterEmployeesBySearch } from '../components/EmployeeSearchFilter';
-import { AppDatePicker, AppTimePicker } from '../components/AppDatePickers';
-import { codeName } from '../utils/format';
-import { viLabel } from '../utils/labels';
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { http } from "../api/http";
+import { useAuth } from "../state/AuthContext";
+import type {
+  BaseEntity,
+  Employee,
+  LeaveBalance,
+  SystemTimeSetting,
+  Team,
+  TeamMember,
+} from "../types";
+import { findDisplay, useReferences } from "../hooks/useReferences";
+import {
+  EmployeeSearchFilter,
+  type EmployeeSearchValue,
+  filterEmployeesBySearch,
+} from "../components/EmployeeSearchFilter";
+import { AppDatePicker, AppTimePicker } from "../components/AppDatePickers";
+import { codeName } from "../utils/format";
+import { viLabel } from "../utils/labels";
+import { formatLeaveDayHours } from "../utils/leaveFormat";
 
 type RequestPageProps = {
   approvalMode?: boolean;
@@ -15,16 +27,24 @@ type RequestPageProps = {
 };
 
 const REQUEST_OPTIONS = [
-  { code: 'LEAVE_REQUEST', label: 'Đơn xin nghỉ phép', group: 'Nghỉ phép' },
-  { code: 'LATE_ARRIVAL', label: 'Đơn đi muộn', group: 'Nghỉ theo giờ' },
-  { code: 'EARLY_LEAVE_REQUEST', label: 'Đơn về sớm', group: 'Nghỉ theo giờ' },
-  { code: 'OUTSIDE_REQUEST', label: 'Đơn ra ngoài', group: 'Nghỉ theo giờ' },
-  { code: 'TIME_OFF', label: 'Đơn nghỉ theo giờ', group: 'Nghỉ theo giờ' },
-  { code: 'MISSING_CHECK_IN', label: 'Đơn bổ sung check-in', group: 'Bổ sung chấm công' },
-  { code: 'MISSING_CHECK_OUT', label: 'Đơn bổ sung check-out', group: 'Bổ sung chấm công' },
-  { code: 'REMOTE_WORK', label: 'Đơn làm remote', group: 'Khác' },
-  { code: 'OVERTIME', label: 'Đơn làm thêm giờ', group: 'Khác' },
-  { code: 'SHIFT_CHANGE', label: 'Đơn đổi ca', group: 'Khác' }
+  { code: "LEAVE_REQUEST", label: "Đơn xin nghỉ phép", group: "Nghỉ phép" },
+  { code: "LATE_ARRIVAL", label: "Đơn đi muộn", group: "Nghỉ theo giờ" },
+  { code: "EARLY_LEAVE_REQUEST", label: "Đơn về sớm", group: "Nghỉ theo giờ" },
+  { code: "OUTSIDE_REQUEST", label: "Đơn ra ngoài", group: "Nghỉ theo giờ" },
+  { code: "TIME_OFF", label: "Đơn nghỉ theo giờ", group: "Nghỉ theo giờ" },
+  {
+    code: "MISSING_CHECK_IN",
+    label: "Đơn bổ sung check-in",
+    group: "Bổ sung chấm công",
+  },
+  {
+    code: "MISSING_CHECK_OUT",
+    label: "Đơn bổ sung check-out",
+    group: "Bổ sung chấm công",
+  },
+  { code: "REMOTE_WORK", label: "Đơn làm remote", group: "Khác" },
+  { code: "OVERTIME", label: "Đơn làm thêm giờ", group: "Khác" },
+  { code: "SHIFT_CHANGE", label: "Đơn đổi ca", group: "Khác" },
 ];
 
 function browserToday() {
@@ -36,11 +56,18 @@ function monthStart(dateText: string) {
 }
 
 function effectiveDate(setting?: SystemTimeSetting) {
-  return setting?.effectiveDate || setting?.effectiveNow?.slice(0, 10) || browserToday();
+  return (
+    setting?.effectiveDate ||
+    setting?.effectiveNow?.slice(0, 10) ||
+    browserToday()
+  );
 }
 
 function requestTypeLabel(code?: string) {
-  return REQUEST_OPTIONS.find((option) => option.code === code)?.label || viLabel(code);
+  return (
+    REQUEST_OPTIONS.find((option) => option.code === code)?.label ||
+    viLabel(code)
+  );
 }
 
 function requestTypeById(refs: ReturnType<typeof useReferences>, id: unknown) {
@@ -52,8 +79,8 @@ function requestTypeById(refs: ReturnType<typeof useReferences>, id: unknown) {
 function durationInfo(startTime?: string, endTime?: string) {
   if (!startTime || !endTime) return { minutes: 0, hours: 0, days: 0 };
 
-  const [sh, sm] = startTime.split(':').map(Number);
-  const [eh, em] = endTime.split(':').map(Number);
+  const [sh, sm] = startTime.split(":").map(Number);
+  const [eh, em] = endTime.split(":").map(Number);
 
   let start = sh * 60 + sm;
   let end = eh * 60 + em;
@@ -65,15 +92,19 @@ function durationInfo(startTime?: string, endTime?: string) {
   return {
     minutes,
     hours: Math.round((minutes / 60) * 100) / 100,
-    days: Math.round((minutes / 480) * 100) / 100
+    days: minutes / 480,
   };
 }
 
-function requestOverlapsRange(request: BaseEntity, fromDate: string, toDate: string) {
+function requestOverlapsRange(
+  request: BaseEntity,
+  fromDate: string,
+  toDate: string,
+) {
   if (!fromDate && !toDate) return true;
 
-  const start = String(request.targetDate ?? '');
-  const end = String(request.endDate ?? request.targetDate ?? '');
+  const start = String(request.targetDate ?? "");
+  const end = String(request.endDate ?? request.targetDate ?? "");
 
   if (fromDate && end && end < fromDate) return false;
   if (toDate && start && start > toDate) return false;
@@ -85,38 +116,44 @@ function statusLabel(status: string) {
   return viLabel(status);
 }
 
-export function RequestPage({ approvalMode = false, initialType }: RequestPageProps) {
+export function RequestPage({
+  approvalMode = false,
+  initialType,
+}: RequestPageProps) {
   const { user, hasRole } = useAuth();
-  const managedViewer = hasRole('ADMIN', 'LEADER');
-  const canCreateForOthers = hasRole('ADMIN');
-  const canApproveRequests = hasRole('ADMIN');
-  const refs = useReferences(['employees', 'requestTypes']);
+  const managedViewer = hasRole("ADMIN", "LEADER");
+  const canCreateForOthers = hasRole("ADMIN");
+  const canApproveRequests = hasRole("ADMIN");
+  const refs = useReferences(["employees", "requestTypes"]);
   const queryClient = useQueryClient();
-  const defaultType = initialType || 'LEAVE_REQUEST';
+  const defaultType = initialType || "LEAVE_REQUEST";
 
   const { data: timeSetting } = useQuery({
-    queryKey: ['system-time'],
-    queryFn: async () => (await http.get<SystemTimeSetting>('/system-time')).data
+    queryKey: ["system-time"],
+    queryFn: async () =>
+      (await http.get<SystemTimeSetting>("/system-time")).data,
   });
 
   const [form, setForm] = useState({
-    employeeId: user?.employeeId ?? '',
+    employeeId: user?.employeeId ?? "",
     requestTypeCode: defaultType,
     targetDate: browserToday(),
-    endDate: '',
-    startTime: '08:00',
-    endTime: '18:00',
-    reason: ''
+    endDate: "",
+    startTime: "08:00",
+    endTime: "18:00",
+    reason: "",
   });
 
-  const [statusFilter, setStatusFilter] = useState(approvalMode ? 'PENDING' : '');
-  const [typeFilter, setTypeFilter] = useState(initialType || '');
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
+  const [statusFilter, setStatusFilter] = useState(
+    approvalMode ? "PENDING" : "",
+  );
+  const [typeFilter, setTypeFilter] = useState(initialType || "");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
   const [employeeFilter, setEmployeeFilter] = useState<EmployeeSearchValue>({
-    teamId: '',
-    keyword: '',
-    employeeId: ''
+    teamId: "",
+    keyword: "",
+    employeeId: "",
   });
 
   useEffect(() => {
@@ -126,7 +163,7 @@ export function RequestPage({ approvalMode = false, initialType }: RequestPagePr
 
     setForm((prev) => ({
       ...prev,
-      targetDate: today
+      targetDate: today,
     }));
 
     if (approvalMode && !fromDate && !toDate) {
@@ -139,65 +176,79 @@ export function RequestPage({ approvalMode = false, initialType }: RequestPagePr
     if (initialType) {
       setForm((prev) => ({
         ...prev,
-        requestTypeCode: initialType
+        requestTypeCode: initialType,
       }));
       setTypeFilter(initialType);
     }
   }, [initialType]);
 
   const { data: employees = [] } = useQuery({
-    queryKey: ['employees'],
-    queryFn: async () => (await http.get<Employee[]>('/employees')).data,
-    enabled: managedViewer
+    queryKey: ["employees"],
+    queryFn: async () => (await http.get<Employee[]>("/employees")).data,
+    enabled: managedViewer,
   });
 
   const { data: teams = [] } = useQuery({
-    queryKey: ['teams'],
-    queryFn: async () => (await http.get<Team[]>('/teams')).data,
-    enabled: managedViewer
+    queryKey: ["teams"],
+    queryFn: async () => (await http.get<Team[]>("/teams")).data,
+    enabled: managedViewer,
   });
 
   const { data: teamMembers = [] } = useQuery({
-    queryKey: ['team-members'],
-    queryFn: async () => (await http.get<TeamMember[]>('/team-members')).data,
-    enabled: managedViewer
+    queryKey: ["team-members"],
+    queryFn: async () => (await http.get<TeamMember[]>("/team-members")).data,
+    enabled: managedViewer,
   });
 
   const filteredEmployees = useMemo(
-    () => filterEmployeesBySearch(
-      employees,
-      teamMembers,
-      employeeFilter.teamId,
-      employeeFilter.keyword
-    ),
-    [employeeFilter.keyword, employeeFilter.teamId, employees, teamMembers]
+    () =>
+      filterEmployeesBySearch(
+        employees,
+        teamMembers,
+        employeeFilter.teamId,
+        employeeFilter.keyword,
+      ),
+    [employeeFilter.keyword, employeeFilter.teamId, employees, teamMembers],
   );
 
   const filteredEmployeeIds = useMemo(
     () => new Set(filteredEmployees.map((employee) => String(employee.id))),
-    [filteredEmployees]
+    [filteredEmployees],
   );
 
   const { data: leaveBalances = [] } = useQuery({
-    queryKey: ['leave-balances', form.employeeId],
-    queryFn: async () => (await http.get<LeaveBalance[]>(`/leave-balances/employee/${form.employeeId}`)).data,
-    enabled: Boolean(form.employeeId)
+    queryKey: ["leave-balances", form.employeeId],
+    queryFn: async () =>
+      (
+        await http.get<LeaveBalance[]>(
+          `/leave-balances/employee/${form.employeeId}`,
+        )
+      ).data,
+    enabled: Boolean(form.employeeId),
   });
 
   const { data: requests = [] } = useQuery({
-    queryKey: ['requests', approvalMode, statusFilter],
+    queryKey: ["requests", approvalMode, statusFilter],
     queryFn: async () => {
-      const statusQuery = approvalMode && statusFilter ? `?status=${statusFilter}` : '';
+      const statusQuery =
+        approvalMode && statusFilter ? `?status=${statusFilter}` : "";
       return (await http.get<BaseEntity[]>(`/requests${statusQuery}`)).data;
-    }
+    },
   });
 
   const displayedRequests = useMemo(() => {
     return requests.filter((request) => {
-      if (!managedViewer && String(request.employeeId) !== String(user?.employeeId)) return false;
+      if (
+        !managedViewer &&
+        String(request.employeeId) !== String(user?.employeeId)
+      )
+        return false;
 
       if (managedViewer) {
-        if (employeeFilter.employeeId && String(request.employeeId) !== String(employeeFilter.employeeId)) {
+        if (
+          employeeFilter.employeeId &&
+          String(request.employeeId) !== String(employeeFilter.employeeId)
+        ) {
           return false;
         }
 
@@ -210,7 +261,12 @@ export function RequestPage({ approvalMode = false, initialType }: RequestPagePr
         }
       }
 
-      if (!approvalMode && statusFilter && String(request.status) !== statusFilter) return false;
+      if (
+        !approvalMode &&
+        statusFilter &&
+        String(request.status) !== statusFilter
+      )
+        return false;
       if (!requestOverlapsRange(request, fromDate, toDate)) return false;
 
       const typeCode = requestTypeById(refs, request.requestTypeId);
@@ -231,73 +287,95 @@ export function RequestPage({ approvalMode = false, initialType }: RequestPagePr
     statusFilter,
     toDate,
     typeFilter,
-    user?.employeeId
+    user?.employeeId,
   ]);
 
   const pendingDisplayedRequests = useMemo(
-    () => displayedRequests.filter((request) => String(request.status) === 'PENDING'),
-    [displayedRequests]
+    () =>
+      displayedRequests.filter(
+        (request) => String(request.status) === "PENDING",
+      ),
+    [displayedRequests],
   );
 
-  const requestStats = useMemo(() => ({
-    total: displayedRequests.length,
-    pending: displayedRequests.filter((request) => request.status === 'PENDING').length,
-    approved: displayedRequests.filter((request) => request.status === 'APPROVED').length,
-    rejected: displayedRequests.filter((request) => request.status === 'REJECTED').length
-  }), [displayedRequests]);
+  const requestStats = useMemo(
+    () => ({
+      total: displayedRequests.length,
+      pending: displayedRequests.filter(
+        (request) => request.status === "PENDING",
+      ).length,
+      approved: displayedRequests.filter(
+        (request) => request.status === "APPROVED",
+      ).length,
+      rejected: displayedRequests.filter(
+        (request) => request.status === "REJECTED",
+      ).length,
+    }),
+    [displayedRequests],
+  );
 
   const createMutation = useMutation({
-    mutationFn: async () => (
-      await http.post('/requests', {
-        ...form,
-        endDate: form.endDate || null
-      })
-    ).data,
+    mutationFn: async () =>
+      (
+        await http.post("/requests", {
+          ...form,
+          endDate: form.endDate || null,
+        })
+      ).data,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['requests'] });
+      queryClient.invalidateQueries({ queryKey: ["requests"] });
       setForm((prev) => ({
         ...prev,
-        reason: ''
+        reason: "",
       }));
-    }
+    },
   });
 
   const actionMutation = useMutation({
-    mutationFn: async ({ id, action }: { id: string; action: 'approve' | 'reject' }) => {
-      if (!canApproveRequests) throw new Error('Bạn không có quyền phê duyệt đơn từ');
+    mutationFn: async ({
+      id,
+      action,
+    }: {
+      id: string;
+      action: "approve" | "reject";
+    }) => {
+      if (!canApproveRequests)
+        throw new Error("Bạn không có quyền phê duyệt đơn từ");
 
-      const comment = action === 'approve'
-        ? 'Đã phê duyệt trên hệ thống'
-        : 'Đã từ chối trên hệ thống';
+      const comment =
+        action === "approve"
+          ? "Đã phê duyệt trên hệ thống"
+          : "Đã từ chối trên hệ thống";
 
       return (await http.post(`/requests/${id}/${action}`, { comment })).data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['requests'] });
-      queryClient.invalidateQueries({ queryKey: ['attendances'] });
-      queryClient.invalidateQueries({ queryKey: ['attendance-summary'] });
-      queryClient.invalidateQueries({ queryKey: ['leave-balances'] });
-    }
+      queryClient.invalidateQueries({ queryKey: ["requests"] });
+      queryClient.invalidateQueries({ queryKey: ["attendances"] });
+      queryClient.invalidateQueries({ queryKey: ["attendance-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["leave-balances"] });
+    },
   });
 
   const approveAllMutation = useMutation({
     mutationFn: async () => {
-      if (!canApproveRequests) throw new Error('Bạn không có quyền phê duyệt đơn từ');
+      if (!canApproveRequests)
+        throw new Error("Bạn không có quyền phê duyệt đơn từ");
 
       await Promise.all(
         pendingDisplayedRequests.map((request) =>
           http.post(`/requests/${request.id}/approve`, {
-            comment: 'Phê duyệt tất cả trên hệ thống'
-          })
-        )
+            comment: "Phê duyệt tất cả trên hệ thống",
+          }),
+        ),
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['requests'] });
-      queryClient.invalidateQueries({ queryKey: ['attendances'] });
-      queryClient.invalidateQueries({ queryKey: ['attendance-summary'] });
-      queryClient.invalidateQueries({ queryKey: ['leave-balances'] });
-    }
+      queryClient.invalidateQueries({ queryKey: ["requests"] });
+      queryClient.invalidateQueries({ queryKey: ["attendances"] });
+      queryClient.invalidateQueries({ queryKey: ["attendance-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["leave-balances"] });
+    },
   });
 
   function submit(e: FormEvent) {
@@ -305,10 +383,19 @@ export function RequestPage({ approvalMode = false, initialType }: RequestPagePr
     createMutation.mutate();
   }
 
-  const selectedOption = REQUEST_OPTIONS.find((option) => option.code === form.requestTypeCode);
-  const isFullLeave = form.requestTypeCode === 'LEAVE_REQUEST';
-  const isPartialLeave = ['LATE_ARRIVAL', 'EARLY_LEAVE_REQUEST', 'OUTSIDE_REQUEST', 'TIME_OFF'].includes(form.requestTypeCode);
-  const isMissingCheck = ['MISSING_CHECK_IN', 'MISSING_CHECK_OUT'].includes(form.requestTypeCode);
+  const selectedOption = REQUEST_OPTIONS.find(
+    (option) => option.code === form.requestTypeCode,
+  );
+  const isFullLeave = form.requestTypeCode === "LEAVE_REQUEST";
+  const isPartialLeave = [
+    "LATE_ARRIVAL",
+    "EARLY_LEAVE_REQUEST",
+    "OUTSIDE_REQUEST",
+    "TIME_OFF",
+  ].includes(form.requestTypeCode);
+  const isMissingCheck = ["MISSING_CHECK_IN", "MISSING_CHECK_OUT"].includes(
+    form.requestTypeCode,
+  );
   const annualBalance = leaveBalances[0];
   const canCreateForm = !approvalMode && Boolean(initialType);
   const duration = durationInfo(form.startTime, form.endTime);
@@ -318,11 +405,11 @@ export function RequestPage({ approvalMode = false, initialType }: RequestPagePr
       <h2>
         {approvalMode
           ? canApproveRequests
-            ? 'Phê duyệt đơn từ'
-            : 'Đơn chờ duyệt của team (chỉ xem)'
+            ? "Phê duyệt đơn từ"
+            : "Đơn chờ duyệt của team (chỉ xem)"
           : initialType
             ? selectedOption?.label
-            : 'Tổng hợp đơn từ'}
+            : "Tổng hợp đơn từ"}
       </h2>
 
       <div className="request-stat-grid">
@@ -349,8 +436,11 @@ export function RequestPage({ approvalMode = false, initialType }: RequestPagePr
         {annualBalance && (
           <div className="request-stat-card leave-balance-card">
             <span>Phép năm còn lại</span>
-            <strong>{annualBalance.remainingDays ?? 0} ngày</strong>
-            <small>Đã dùng {annualBalance.usedDays ?? 0}/{annualBalance.totalDays ?? 0} ngày</small>
+            <strong>{formatLeaveDayHours(annualBalance.remainingDays)}</strong>
+            <small>
+              Đã dùng {formatLeaveDayHours(annualBalance.usedDays)} / Tổng{" "}
+              {formatLeaveDayHours(annualBalance.totalDays)}
+            </small>
           </div>
         )}
       </div>
@@ -365,10 +455,16 @@ export function RequestPage({ approvalMode = false, initialType }: RequestPagePr
         />
       )}
 
-      <div className={canCreateForm ? 'grid-two request-grid' : 'request-grid single-request-list'}>
+      <div
+        className={
+          canCreateForm
+            ? "grid-two request-grid"
+            : "request-grid single-request-list"
+        }
+      >
         {canCreateForm && (
           <form className="card form-grid" onSubmit={submit}>
-            <h3>{initialType ? selectedOption?.label : 'Tạo đơn từ'}</h3>
+            <h3>{initialType ? selectedOption?.label : "Tạo đơn từ"}</h3>
 
             {canCreateForOthers ? (
               <label>
@@ -379,14 +475,20 @@ export function RequestPage({ approvalMode = false, initialType }: RequestPagePr
                   onChange={(e) =>
                     setForm({
                       ...form,
-                      employeeId: e.target.value
+                      employeeId: e.target.value,
                     })
                   }
                 >
                   <option value="">-- chọn nhân viên --</option>
                   {employees.map((employee) => (
-                    <option key={String(employee.id)} value={String(employee.id)}>
-                      {codeName(String(employee.employeeCode ?? ''), String(employee.fullName ?? ''))}
+                    <option
+                      key={String(employee.id)}
+                      value={String(employee.id)}
+                    >
+                      {codeName(
+                        String(employee.employeeCode ?? ""),
+                        String(employee.fullName ?? ""),
+                      )}
                     </option>
                   ))}
                 </select>
@@ -396,7 +498,11 @@ export function RequestPage({ approvalMode = false, initialType }: RequestPagePr
                 Nhân viên
                 <input
                   disabled
-                  value={codeName(user?.employeeCode, user?.employeeName || user?.fullName, user?.employeeId)}
+                  value={codeName(
+                    user?.employeeCode,
+                    user?.employeeName || user?.fullName,
+                    user?.employeeId,
+                  )}
                 />
               </label>
             )}
@@ -409,7 +515,7 @@ export function RequestPage({ approvalMode = false, initialType }: RequestPagePr
                 onChange={(e) =>
                   setForm({
                     ...form,
-                    requestTypeCode: e.target.value
+                    requestTypeCode: e.target.value,
                   })
                 }
               >
@@ -428,7 +534,7 @@ export function RequestPage({ approvalMode = false, initialType }: RequestPagePr
               onChange={(value) =>
                 setForm({
                   ...form,
-                  targetDate: value
+                  targetDate: value,
                 })
               }
             />
@@ -440,15 +546,17 @@ export function RequestPage({ approvalMode = false, initialType }: RequestPagePr
                 onChange={(value) =>
                   setForm({
                     ...form,
-                    endDate: value
+                    endDate: value,
                   })
                 }
               />
             )}
 
-            {(isPartialLeave || isMissingCheck || form.requestTypeCode === 'OVERTIME') && (
+            {(isPartialLeave ||
+              isMissingCheck ||
+              form.requestTypeCode === "OVERTIME") && (
               <>
-                {form.requestTypeCode === 'MISSING_CHECK_OUT' ? (
+                {form.requestTypeCode === "MISSING_CHECK_OUT" ? (
                   <AppTimePicker
                     label="Giờ check-out"
                     required
@@ -456,19 +564,23 @@ export function RequestPage({ approvalMode = false, initialType }: RequestPagePr
                     onChange={(value) =>
                       setForm({
                         ...form,
-                        endTime: value
+                        endTime: value,
                       })
                     }
                   />
                 ) : (
                   <AppTimePicker
-                    label={form.requestTypeCode === 'MISSING_CHECK_IN' ? 'Giờ check-in' : 'Giờ bắt đầu'}
+                    label={
+                      form.requestTypeCode === "MISSING_CHECK_IN"
+                        ? "Giờ check-in"
+                        : "Giờ bắt đầu"
+                    }
                     required
                     value={form.startTime}
                     onChange={(value) =>
                       setForm({
                         ...form,
-                        startTime: value
+                        startTime: value,
                       })
                     }
                   />
@@ -482,7 +594,7 @@ export function RequestPage({ approvalMode = false, initialType }: RequestPagePr
                     onChange={(value) =>
                       setForm({
                         ...form,
-                        endTime: value
+                        endTime: value,
                       })
                     }
                   />
@@ -492,8 +604,11 @@ export function RequestPage({ approvalMode = false, initialType }: RequestPagePr
 
             {isPartialLeave && (
               <div className="inline-note">
-                Sau khi được duyệt, hệ thống sẽ trừ <strong>{duration.hours} giờ phép</strong> khỏi quỹ phép còn lại,
-                quy đổi tương đương <strong>{duration.days} ngày</strong> theo chuẩn 8 giờ = 1 ngày.
+                Sau khi được duyệt, hệ thống sẽ trừ{" "}
+                <strong>{duration.hours} giờ phép</strong> khỏi quỹ phép còn
+                lại, tương đương{" "}
+                <strong>{formatLeaveDayHours(duration.days)}</strong> theo chuẩn
+                8 giờ = 1 ngày.
               </div>
             )}
 
@@ -512,14 +627,14 @@ export function RequestPage({ approvalMode = false, initialType }: RequestPagePr
                 onChange={(e) =>
                   setForm({
                     ...form,
-                    reason: e.target.value
+                    reason: e.target.value,
                   })
                 }
               />
             </label>
 
             <button disabled={createMutation.isPending}>
-              {createMutation.isPending ? 'Đang tạo...' : 'Tạo đơn'}
+              {createMutation.isPending ? "Đang tạo..." : "Tạo đơn"}
             </button>
           </form>
         )}
@@ -581,7 +696,7 @@ export function RequestPage({ approvalMode = false, initialType }: RequestPagePr
                   }
                 >
                   {approveAllMutation.isPending
-                    ? 'Đang duyệt...'
+                    ? "Đang duyệt..."
                     : `Phê duyệt tất cả (${pendingDisplayedRequests.length})`}
                 </button>
               </div>
@@ -604,24 +719,26 @@ export function RequestPage({ approvalMode = false, initialType }: RequestPagePr
             <tbody>
               {displayedRequests.map((request) => {
                 const typeCode = requestTypeById(refs, request.requestTypeId);
-                const isPending = String(request.status) === 'PENDING';
+                const isPending = String(request.status) === "PENDING";
 
                 return (
                   <tr key={request.id as string}>
-                    <td>{findDisplay(refs, 'employees', request.employeeId)}</td>
+                    <td>
+                      {findDisplay(refs, "employees", request.employeeId)}
+                    </td>
                     <td>{requestTypeLabel(typeCode)}</td>
                     <td>
-                      {String(request.targetDate ?? '')}
-                      {request.endDate ? ` → ${String(request.endDate)}` : ''}
+                      {String(request.targetDate ?? "")}
+                      {request.endDate ? ` → ${String(request.endDate)}` : ""}
                     </td>
                     <td>
-                      {String(request.startTime ?? '')}
-                      {request.endTime ? ` - ${String(request.endTime)}` : ''}
+                      {String(request.startTime ?? "")}
+                      {request.endTime ? ` - ${String(request.endTime)}` : ""}
                     </td>
-                    <td>{String(request.reason ?? '')}</td>
+                    <td>{String(request.reason ?? "")}</td>
                     <td>
                       <span className="badge">
-                        {statusLabel(String(request.status ?? ''))}
+                        {statusLabel(String(request.status ?? ""))}
                       </span>
                     </td>
 
@@ -631,11 +748,15 @@ export function RequestPage({ approvalMode = false, initialType }: RequestPagePr
                           <>
                             <button
                               className="small"
-                              disabled={actionMutation.isPending || approveAllMutation.isPending || !canApproveRequests}
+                              disabled={
+                                actionMutation.isPending ||
+                                approveAllMutation.isPending ||
+                                !canApproveRequests
+                              }
                               onClick={() =>
                                 actionMutation.mutate({
                                   id: request.id as string,
-                                  action: 'approve'
+                                  action: "approve",
                                 })
                               }
                             >
@@ -644,11 +765,15 @@ export function RequestPage({ approvalMode = false, initialType }: RequestPagePr
 
                             <button
                               className="small danger"
-                              disabled={actionMutation.isPending || approveAllMutation.isPending || !canApproveRequests}
+                              disabled={
+                                actionMutation.isPending ||
+                                approveAllMutation.isPending ||
+                                !canApproveRequests
+                              }
                               onClick={() =>
                                 actionMutation.mutate({
                                   id: request.id as string,
-                                  action: 'reject'
+                                  action: "reject",
                                 })
                               }
                             >

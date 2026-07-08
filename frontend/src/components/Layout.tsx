@@ -76,8 +76,7 @@ export function Layout() {
         { to: '/shifts', label: 'Ca làm việc', show: isAdmin },
         { to: '/contract-types', label: 'Chính sách hợp đồng', show: isAdmin },
         { to: '/employee-contracts', label: 'Hợp đồng nhân viên', show: isAdmin },
-        { to: '/holidays', label: 'Ngày nghỉ lễ', show: isAdmin },
-        { to: '/schedules', label: 'Lịch cá nhân đặc biệt', show: isAdmin }
+        { to: '/holidays', label: 'Ngày nghỉ lễ', show: isAdmin }
       ]
     }
   ];
@@ -89,11 +88,13 @@ export function Layout() {
           <div className="brand">TimeFlow</div>
           <span>Dashboard chấm công & nhân sự</span>
         </div>
+
         <nav className="top-menu" aria-label="Menu chính">
           {groups.map((group) => {
             const visibleItems = group.items.filter((item) => item.show);
             if (visibleItems.length === 0) return null;
             const isOpen = openGroup === group.label;
+
             return (
               <div
                 className={`menu-group ${isOpen ? 'open' : ''}`}
@@ -116,6 +117,7 @@ export function Layout() {
             );
           })}
         </nav>
+
         <div className="user-inline">
           <div>
             <strong>{user?.employeeCode ? `${user.employeeCode} - ${user.employeeName || user.fullName}` : user?.fullName || user?.username}</strong>
@@ -124,11 +126,12 @@ export function Layout() {
           <button className="secondary logout-button" onClick={logout}>Đăng xuất</button>
         </div>
       </header>
+
       <main className="main app-main-content">
         <Outlet />
       </main>
-      <FloatingChatbot />
 
+      <FloatingChatbot />
     </div>
   );
 }

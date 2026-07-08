@@ -6,6 +6,7 @@ import type { Attendance, AttendanceSummary, Employee, Team, TeamMember, SystemT
 import { AppDatePicker, AppMonthPicker } from '../components/AppDatePickers';
 import { codeName, employeeLabel, formatDateTime } from '../utils/format';
 import { viLabel } from '../utils/labels';
+import { formatLeaveDayHours } from '../utils/leaveFormat';
 
 function dateString(d: Date) {
   const year = d.getFullYear();
@@ -650,8 +651,8 @@ function MonthSummaryPanel({ summary }: { summary?: AttendanceSummary }) {
       <span>Đi muộn: <strong>{summary?.lateDays ?? 0}</strong></span>
       <span>Giờ làm: <strong>{minutesToHourText(summary?.totalWorkingMinutes)}</strong></span>
       <span>OT: <strong>{minutesToHourText(summary?.totalOvertimeMinutes)}</strong></span>
-      <span>Phép đã dùng: <strong>{summary?.leaveUsedDays ?? 0} ngày</strong></span>
-      <span>Phép còn lại: <strong>{summary?.leaveRemainingDays ?? 0} ngày</strong></span>
+      <span>Phép đã dùng: <strong>{formatLeaveDayHours(summary?.leaveUsedDays)}</strong></span>
+      <span>Phép còn lại: <strong>{formatLeaveDayHours(summary?.leaveRemainingDays)}</strong></span>
     </div>
   );
 }
@@ -714,8 +715,8 @@ function SummaryTable({
                 <td>{minutesToHourText(row.totalOvertimeMinutes)}</td>
                 <td>{row.totalLateMinutes} phút</td>
                 <td>{row.totalEarlyLeaveMinutes} phút</td>
-                <td>{row.leaveUsedDays ?? 0} ngày</td>
-                <td>{row.leaveRemainingDays ?? 0} ngày</td>
+                <td>{formatLeaveDayHours(row.leaveUsedDays)}</td>
+                <td>{formatLeaveDayHours(row.leaveRemainingDays)}</td>
               </tr>
             ))}
           </tbody>
@@ -796,6 +797,7 @@ function MonthlyCalendar({
           const row = cell.row;
           const isFuture = cell.date > highlightToday;
           const isDayOff = Boolean(row?.holiday || row?.weekend);
+          const hasPlannedShift = Boolean(row?.plannedStartTime && row?.plannedEndTime);
           const dayClass = row?.holiday ? 'holiday-day' : row?.weekend ? 'weekend-day' : 'workday';
           const todayClass = cell.date === highlightToday ? 'today-day' : '';
 
@@ -816,18 +818,19 @@ function MonthlyCalendar({
               <div className="calendar-lines">
                 {isFuture ? (
                   <>
-                    <span>
-                      Máy chấm công: {shortTime(row?.firstCheckIn) || '--'} - {shortTime(row?.lastCheckOut) || '--'}
-                    </span>
-                    <span>
-                      Nghỉ giữa giờ: {shortTime(row?.lastBreakOut) || '--'} - {shortTime(row?.firstBreakIn) || '--'}
-                    </span>
-                    <span>
-                      Thời gian làm: {minutesToHourText(row?.totalWorkingMinutes)}
-                    </span>
-                    <span>
-                      {isDayOff ? 'OT ngày nghỉ' : 'OT'}: {minutesToHourText(row?.overtimeMinutes)}
-                    </span>
+                    {!isDayOff && hasPlannedShift && (
+                      <>
+                        <span>
+                          Lịch: {shortTime(row?.plannedStartTime)} - {shortTime(row?.plannedEndTime)}
+                        </span>
+                        <span>
+                          Nghỉ trưa: {shortTime(row?.plannedLunchStartTime) || '--'} - {shortTime(row?.plannedLunchEndTime) || '--'}
+                        </span>
+                        <span>
+                          Thời gian chuẩn: {minutesToHourText(row?.plannedWorkingMinutes)}
+                        </span>
+                      </>
+                    )}
                   </>
                 ) : isDayOff ? (
                   <>

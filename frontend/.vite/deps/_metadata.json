@@ -1,0 +1,124 @@
+{
+  "hash": "f53ef56c",
+  "configHash": "f1baf43a",
+  "lockfileHash": "721fa6e6",
+  "browserHash": "0e1738fd",
+  "optimized": {
+    "@mui/x-date-pickers/AdapterDayjs": {
+      "src": "../../node_modules/@mui/x-date-pickers/AdapterDayjs/index.mjs",
+      "file": "@mui_x-date-pickers_AdapterDayjs.js",
+      "fileHash": "5257b738",
+      "needsInterop": false
+    },
+    "@mui/x-date-pickers/DatePicker": {
+      "src": "../../node_modules/@mui/x-date-pickers/DatePicker/index.mjs",
+      "file": "@mui_x-date-pickers_DatePicker.js",
+      "fileHash": "838f4551",
+      "needsInterop": false
+    },
+    "@mui/x-date-pickers/DateTimePicker": {
+      "src": "../../node_modules/@mui/x-date-pickers/DateTimePicker/index.mjs",
+      "file": "@mui_x-date-pickers_DateTimePicker.js",
+      "fileHash": "80b828f8",
+      "needsInterop": false
+    },
+    "@mui/x-date-pickers/LocalizationProvider": {
+      "src": "../../node_modules/@mui/x-date-pickers/LocalizationProvider/index.mjs",
+      "file": "@mui_x-date-pickers_LocalizationProvider.js",
+      "fileHash": "8feacd35",
+      "needsInterop": false
+    },
+    "@mui/x-date-pickers/TimePicker": {
+      "src": "../../node_modules/@mui/x-date-pickers/TimePicker/index.mjs",
+      "file": "@mui_x-date-pickers_TimePicker.js",
+      "fileHash": "7d1a2ee3",
+      "needsInterop": false
+    },
+    "@tanstack/react-query": {
+      "src": "../../node_modules/@tanstack/react-query/build/modern/index.js",
+      "file": "@tanstack_react-query.js",
+      "fileHash": "3f86668a",
+      "needsInterop": false
+    },
+    "axios": {
+      "src": "../../node_modules/axios/index.js",
+      "file": "axios.js",
+      "fileHash": "93a3c9ae",
+      "needsInterop": false
+    },
+    "dayjs": {
+      "src": "../../node_modules/dayjs/dayjs.min.js",
+      "file": "dayjs.js",
+      "fileHash": "3e3b1ae3",
+      "needsInterop": true
+    },
+    "dayjs/locale/vi": {
+      "src": "../../node_modules/dayjs/locale/vi.js",
+      "file": "dayjs_locale_vi.js",
+      "fileHash": "25d810fa",
+      "needsInterop": true
+    },
+    "react-dom/client": {
+      "src": "../../node_modules/react-dom/client.js",
+      "file": "react-dom_client.js",
+      "fileHash": "f00dddd3",
+      "needsInterop": true
+    },
+    "react-router-dom": {
+      "src": "../../node_modules/react-router-dom/dist/index.mjs",
+      "file": "react-router-dom.js",
+      "fileHash": "bca18ed6",
+      "needsInterop": false
+    },
+    "react": {
+      "src": "../../node_modules/react/index.js",
+      "file": "react.js",
+      "fileHash": "06084a2a",
+      "needsInterop": true
+    },
+    "react/jsx-dev-runtime": {
+      "src": "../../node_modules/react/jsx-dev-runtime.js",
+      "file": "react_jsx-dev-runtime.js",
+      "fileHash": "118c97bb",
+      "needsInterop": true
+    }
+  },
+  "chunks": {
+    "LocalizationProvider-CyOIGrUO": {
+      "file": "LocalizationProvider-CyOIGrUO.js",
+      "isDynamicEntry": false
+    },
+    "chunk-B-1-B7_t": {
+      "file": "chunk-B-1-B7_t.js",
+      "isDynamicEntry": false
+    },
+    "date-time-utils-B9Tj6ytM": {
+      "file": "date-time-utils-B9Tj6ytM.js",
+      "isDynamicEntry": false
+    },
+    "dateViewRenderers-BcnUXFC0": {
+      "file": "dateViewRenderers-BcnUXFC0.js",
+      "isDynamicEntry": false
+    },
+    "extends-DrH2PCIy": {
+      "file": "extends-DrH2PCIy.js",
+      "isDynamicEntry": false
+    },
+    "jsx-runtime-D51v3ApR": {
+      "file": "jsx-runtime-D51v3ApR.js",
+      "isDynamicEntry": false
+    },
+    "react-dom-Br2l1Z8p": {
+      "file": "react-dom-Br2l1Z8p.js",
+      "isDynamicEntry": false
+    },
+    "useMobilePicker-CRLhUKKU": {
+      "file": "useMobilePicker-CRLhUKKU.js",
+      "isDynamicEntry": false
+    },
+    "warning-ci_nFDcC": {
+      "file": "warning-ci_nFDcC.js",
+      "isDynamicEntry": false
+    }
+  }
+}
