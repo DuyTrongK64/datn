@@ -288,3 +288,64 @@
     max-width: none;
   }
 }
+
+/* Holiday one-day / range selector */
+.holiday-range-box {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #dbeafe;
+  border-radius: 16px;
+  background: #f8fbff;
+}
+
+.holiday-mode-tabs {
+  display: inline-flex;
+  width: fit-content;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.holiday-mode-tabs button {
+  border: 0;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: transparent;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 800;
+  box-shadow: none;
+}
+
+.holiday-mode-tabs button.active {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.holiday-date-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.holiday-date-grid .app-date-picker {
+  width: 80%;
+  min-width: 180px !important;
+}
+
+.holiday-derived-note {
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+@media (max-width: 700px) {
+  .holiday-date-grid {
+    grid-template-columns: 1fr;
+  }
+}

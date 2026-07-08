@@ -190,9 +190,13 @@ public class AttendanceCalculationService {
                 } else {
                     shift = resolveShift(employeeId, date, scheduleOpt).orElse(null);
                 }
+
+                // Nếu dòng đã tồn tại nhưng chưa lưu shift, vẫn hiển thị lịch kế hoạch từ hợp đồng.
+                if (row.getShiftId() == null) {
+                    applyPlannedShift(row, shift);
+                }
             }
 
-            // Quan trọng: luôn apply lại danh sách đơn cho cả row đã tồn tại và row tạm
             applyApprovedRequestOverrides(row, date, shift);
 
             rows.add(row);
@@ -203,6 +207,8 @@ public class AttendanceCalculationService {
     }
 
     public List<AttendanceDtos.AttendanceResponse> toResponses(List<DailyAttendance> rows) {
+        if (rows.isEmpty()) return List.of();
+
         Map<UUID, Employee> employeeMap = employeeRepository.findAllById(rows.stream().map(DailyAttendance::getEmployeeId).filter(Objects::nonNull).toList())
                 .stream().collect(Collectors.toMap(Employee::getId, Function.identity()));
         Map<UUID, Department> departmentMap = departmentRepository.findAll().stream().collect(Collectors.toMap(Department::getId, Function.identity()));
@@ -211,10 +217,10 @@ public class AttendanceCalculationService {
         Map<UUID, Team> teamMap = teamRepository.findAll().stream().collect(Collectors.toMap(Team::getId, Function.identity()));
         Map<UUID, UUID> employeeTeamMap = teamMemberRepository.findAll().stream()
                 .collect(Collectors.toMap(TeamMember::getEmployeeId, TeamMember::getTeamId, (oldValue, newValue) -> oldValue));
-        Map<LocalDate, Holiday> holidayMap = holidayRepository.findByHolidayDateBetweenOrderByHolidayDateAsc(
-                        rows.stream().map(DailyAttendance::getWorkDate).min(LocalDate::compareTo).orElse(systemTimeService.today()),
-                        rows.stream().map(DailyAttendance::getWorkDate).max(LocalDate::compareTo).orElse(systemTimeService.today()))
-                .stream().collect(Collectors.toMap(Holiday::getHolidayDate, Function.identity(), (oldValue, newValue) -> oldValue));
+
+        LocalDate minDate = rows.stream().map(DailyAttendance::getWorkDate).min(LocalDate::compareTo).orElse(systemTimeService.today());
+        LocalDate maxDate = rows.stream().map(DailyAttendance::getWorkDate).max(LocalDate::compareTo).orElse(systemTimeService.today());
+        Map<LocalDate, Holiday> holidayMap = buildHolidayMap(minDate, maxDate);
 
         return rows.stream().map(row -> {
             Employee employee = employeeMap.get(row.getEmployeeId());
@@ -325,7 +331,6 @@ public class AttendanceCalculationService {
         }).toList();
     }
 
-
     private void applyApprovedRequestOverrides(DailyAttendance daily, LocalDate workDate, Shift shift) {
         if (daily.getEmployeeId() == null) return;
         List<AttendanceRequest> effectiveRequests = requestRepository.findEffectiveRequestsByStatuses(
@@ -336,7 +341,9 @@ public class AttendanceCalculationService {
 
         List<AttendanceRequest> approvedRequests = effectiveRequests.stream()
                 .filter(request -> request.getStatus() == RequestStatus.APPROVED)
-                .toList();        if (approvedRequests.isEmpty()) {
+                .toList();
+
+        if (effectiveRequests.isEmpty()) {
             daily.setApprovedLeaveMinutes(0);
             daily.setApprovedRequestTypes(null);
             return;
@@ -561,7 +568,25 @@ public class AttendanceCalculationService {
     }
 
     private boolean isDayOff(LocalDate date) {
-        return isWeekend(date) || holidayRepository.findFirstByHolidayDate(date).isPresent();
+        return isWeekend(date) || holidayRepository.findFirstEffectiveHoliday(date).isPresent();
+    }
+
+    private Map<LocalDate, Holiday> buildHolidayMap(LocalDate from, LocalDate to) {
+        Map<LocalDate, Holiday> map = new HashMap<>();
+        for (Holiday holiday : holidayRepository.findEffectiveHolidaysBetween(from, to)) {
+            LocalDate start = holiday.getHolidayDate().isBefore(from) ? from : holiday.getHolidayDate();
+            LocalDate end = resolveHolidayEndDate(holiday).isAfter(to) ? to : resolveHolidayEndDate(holiday);
+            LocalDate date = start;
+            while (!date.isAfter(end)) {
+                map.putIfAbsent(date, holiday);
+                date = date.plusDays(1);
+            }
+        }
+        return map;
+    }
+
+    private LocalDate resolveHolidayEndDate(Holiday holiday) {
+        return holiday.getEndDate() == null ? holiday.getHolidayDate() : holiday.getEndDate();
     }
 
     private boolean isWeekend(LocalDate date) {

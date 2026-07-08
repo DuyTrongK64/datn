@@ -115,6 +115,17 @@ function prepareFormForSave(
     };
   }
 
+  if (pagePath === 'holidays') {
+    const startDate = String(form.holidayDate || '');
+    const endDate = String(form.endDate || '');
+    return {
+      ...form,
+      holidayDate: startDate,
+      endDate: endDate && endDate !== startDate ? endDate : null,
+      paid: true
+    };
+  }
+
   return form;
 }
 
@@ -379,7 +390,8 @@ export function EntityPage({ config }: { config: EntityPageConfig }) {
     setEditing(row);
     setForm({
       ...emptyForm(config.fields),
-      ...row
+      ...row,
+      holidayRangeMode: config.path === 'holidays' ? Boolean(row.endDate) : undefined
     });
   }
 
@@ -433,6 +445,12 @@ export function EntityPage({ config }: { config: EntityPageConfig }) {
               </div>
             )}
 
+            {config.path === 'holidays' && (
+              <div className="holiday-derived-note">
+                Chọn 1 ngày cho ngày lễ riêng lẻ hoặc chọn khoảng ngày cho kỳ nghỉ lễ kéo dài.
+              </div>
+            )}
+
             <div className="form-actions">
               <button type="submit">
                 {editing ? 'Lưu' : 'Tạo'}
@@ -479,7 +497,7 @@ export function EntityPage({ config }: { config: EntityPageConfig }) {
                   >
                     {columns.map((column) => (
                       <td key={column.key}>
-                        {formatCell(column, row[column.key], refs)}
+                        {formatCell(column, row[column.key], refs, row)}
                       </td>
                     ))}
 
@@ -569,6 +587,93 @@ function PrettyCheckbox({
   );
 }
 
+
+function HolidayDateRangeFields({
+  form,
+  setForm,
+  required
+}: {
+  form: BaseEntity;
+  setForm: (value: BaseEntity) => void;
+  required?: boolean;
+}) {
+  const startDate = String(form.holidayDate || '');
+  const endDate = String(form.endDate || '');
+  const rangeMode = Boolean(form.holidayRangeMode) || Boolean(endDate && endDate !== startDate);
+
+  function setSingleDay() {
+    setForm({
+      ...form,
+      holidayRangeMode: false,
+      endDate: ''
+    });
+  }
+
+  function setRangeMode() {
+    setForm({
+      ...form,
+      holidayRangeMode: true,
+      endDate: endDate || startDate || ''
+    });
+  }
+
+  function updateStartDate(value: string) {
+    setForm({
+      ...form,
+      holidayDate: value,
+      holidayRangeMode: rangeMode,
+      endDate: rangeMode ? (endDate && endDate >= value ? endDate : value) : ''
+    });
+  }
+
+  function updateEndDate(value: string) {
+    setForm({
+      ...form,
+      holidayRangeMode: true,
+      endDate: value
+    });
+  }
+
+  return (
+    <div className="holiday-range-box">
+      <div className="holiday-mode-tabs" aria-label="Kiểu ngày nghỉ lễ">
+        <button
+          type="button"
+          className={!rangeMode ? 'active' : ''}
+          onClick={setSingleDay}
+        >
+          1 ngày
+        </button>
+        <button
+          type="button"
+          className={rangeMode ? 'active' : ''}
+          onClick={setRangeMode}
+        >
+          Khoảng ngày
+        </button>
+      </div>
+
+      <div className="holiday-date-grid">
+        <AppDatePicker
+          label={rangeMode ? 'Từ ngày' : 'Ngày nghỉ lễ'}
+          required={required}
+          value={startDate}
+          onChange={updateStartDate}
+        />
+
+        {rangeMode && (
+          <AppDatePicker
+            label="Đến ngày"
+            required={required}
+            value={endDate || startDate}
+            onChange={updateEndDate}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
 function renderField(
   field: FieldConfig,
   form: BaseEntity,
@@ -582,6 +687,17 @@ function renderField(
       ...form,
       [field.key]: next
     });
+
+  if (pagePath === 'holidays' && field.key === 'holidayDate') {
+    return (
+      <HolidayDateRangeFields
+        key={field.key}
+        form={form}
+        setForm={setForm}
+        required={field.required}
+      />
+    );
+  }
 
   if (pagePath === 'shifts') {
     if (['lateToleranceMinutes', 'earlyLeaveToleranceMinutes'].includes(field.key) && !form.flexible) {
@@ -785,9 +901,17 @@ function normalizePayload(
 function formatCell(
   field: FieldConfig,
   value: unknown,
-  refs: ReturnType<typeof useReferences>
+  refs: ReturnType<typeof useReferences>,
+  row?: BaseEntity
 ) {
   if (value === null || value === undefined) return '';
+
+  if (field.key === 'holidayDate') {
+    const start = String(value ?? '');
+    const end = String(row?.endDate ?? '');
+    return end && end !== start ? `${start} → ${end}` : start;
+  }
+
   if (field.ref) return findDisplay(refs, field.ref, value);
   if (typeof value === 'boolean') return value ? 'Có' : 'Không';
 

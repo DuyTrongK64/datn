@@ -96,9 +96,10 @@ export const entityPages: EntityPageConfig[] = [
     { key: 'salaryType', label: 'Loại lương', type: 'select', options: ['MONTHLY', 'HOURLY', 'DAILY'], required: true, defaultValue: 'MONTHLY' },
     { key: 'status', label: 'Trạng thái', type: 'select', options: ['DRAFT', 'ACTIVE', 'EXPIRED', 'TERMINATED'], required: true, defaultValue: 'ACTIVE' }
   ]},
-  { path: 'holidays', title: 'Ngày nghỉ lễ', apiPath: '/holidays', pageNote: 'Ngày nghỉ lễ trong hệ thống luôn được tính là nghỉ có lương. Nếu nhân viên vẫn chấm công trong ngày này, thời gian làm sẽ được tính vào OT.', fields: [
+  { path: 'holidays', title: 'Ngày nghỉ lễ', apiPath: '/holidays', pageNote: 'Có thể cấu hình nghỉ lễ trong 1 ngày hoặc một khoảng ngày. Ngày nghỉ lễ luôn được tính là nghỉ có lương; nếu nhân viên vẫn chấm công trong ngày này, thời gian làm sẽ được tính vào OT.', fields: [
     defaultCompanyField,
-    { key: 'holidayDate', label: 'Ngày nghỉ lễ', type: 'date', required: true },
+    { key: 'holidayDate', label: 'Ngày bắt đầu nghỉ lễ', type: 'date', required: true },
+    { key: 'endDate', label: 'Ngày kết thúc nghỉ lễ', type: 'date', hidden: true },
     { key: 'name', label: 'Tên ngày nghỉ lễ', required: true },
     { key: 'paid', label: 'Có lương', type: 'hidden', hidden: true, defaultValue: true }
   ]},
