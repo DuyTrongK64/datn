@@ -276,32 +276,69 @@ public class AttendanceCalculationService {
     }
 
     public List<AttendanceDtos.AttendanceSummaryResponse> summarize(LocalDate from, LocalDate to, UUID employeeId, UUID teamId) {
+        LocalDate startDate = from.isAfter(to) ? to : from;
+        LocalDate endDate = from.isAfter(to) ? from : to;
+
         List<Employee> employees = resolveEmployees(employeeId, teamId);
         Map<UUID, List<DailyAttendance>> rowsByEmployee = new HashMap<>();
         for (Employee employee : employees) {
-            rowsByEmployee.put(employee.getId(), dailyAttendanceRepository.findByEmployeeIdAndWorkDateBetween(employee.getId(), from, to));
+            rowsByEmployee.put(
+                    employee.getId(),
+                    dailyAttendanceRepository.findByEmployeeIdAndWorkDateBetween(employee.getId(), startDate, endDate)
+            );
         }
+
+        Map<LocalDate, Holiday> holidayMap = buildHolidayMap(startDate, endDate);
         Map<UUID, Department> departmentMap = departmentRepository.findAll().stream().collect(Collectors.toMap(Department::getId, Function.identity()));
         Map<UUID, Team> teamMap = teamRepository.findAll().stream().collect(Collectors.toMap(Team::getId, Function.identity()));
         Map<UUID, UUID> employeeTeamMap = teamMemberRepository.findAll().stream()
                 .collect(Collectors.toMap(TeamMember::getEmployeeId, TeamMember::getTeamId, (oldValue, newValue) -> oldValue));
 
         return employees.stream().map(employee -> {
-            List<DailyAttendance> rows = rowsByEmployee.getOrDefault(employee.getId(), List.of());
+            // Phòng trường hợp repository/JPA trả về dữ liệu cũ hoặc query bị tái sử dụng,
+            // toàn bộ chỉ số tổng hợp dưới đây luôn được lọc lại theo đúng khoảng ngày người dùng đang chọn.
+            List<DailyAttendance> rows = rowsByEmployee.getOrDefault(employee.getId(), List.of()).stream()
+                    .filter(row -> row.getWorkDate() != null)
+                    .filter(row -> !row.getWorkDate().isBefore(startDate) && !row.getWorkDate().isAfter(endDate))
+                    .toList();
+
             UUID teamOfEmployeeId = employeeTeamMap.get(employee.getId());
             Team team = teamOfEmployeeId == null ? null : teamMap.get(teamOfEmployeeId);
             Department department = departmentMap.get(employee.getDepartmentId());
-            int actualWorkingDays = (int) rows.stream().filter(row -> safe(row.getTotalWorkingMinutes()) > 0).count();
-            int dayOffCount = countDayOff(from, to);
-            int absentDays = (int) rows.stream().filter(row -> row.getStatus() == AttendanceStatus.ABSENT && !isDayOff(row.getWorkDate())).count();
-            int lateDays = (int) rows.stream().filter(row -> !isDayOff(row.getWorkDate()) && safe(row.getLateMinutes()) > 0).count();
-            int earlyDays = (int) rows.stream().filter(row -> !isDayOff(row.getWorkDate()) && safe(row.getEarlyLeaveMinutes()) > 0).count();
-            int missingDays = (int) rows.stream().filter(row -> !isDayOff(row.getWorkDate()) && (row.getStatus() == AttendanceStatus.MISSING_CHECK_IN || row.getStatus() == AttendanceStatus.MISSING_CHECK_OUT)).count();
-            int totalWorkingMinutes = rows.stream().mapToInt(row -> safe(row.getTotalWorkingMinutes())).sum();
-            int totalOvertimeMinutes = rows.stream().mapToInt(row -> safe(row.getOvertimeMinutes())).sum();
-            int totalLateMinutes = rows.stream().filter(row -> !isDayOff(row.getWorkDate())).mapToInt(row -> safe(row.getLateMinutes())).sum();
-            int totalEarlyMinutes = rows.stream().filter(row -> !isDayOff(row.getWorkDate())).mapToInt(row -> safe(row.getEarlyLeaveMinutes())).sum();
-            LeaveBalance annualBalance = findAnnualLeaveBalance(employee.getId(), from.getYear()).orElse(null);
+
+            int actualWorkingDays = (int) rows.stream()
+                    .filter(row -> safe(row.getTotalWorkingMinutes()) > 0)
+                    .count();
+            int dayOffCount = countDayOff(startDate, endDate, holidayMap);
+            int absentDays = (int) rows.stream()
+                    .filter(row -> row.getStatus() == AttendanceStatus.ABSENT && !isDayOff(row.getWorkDate(), holidayMap))
+                    .count();
+            int lateDays = (int) rows.stream()
+                    .filter(row -> !isDayOff(row.getWorkDate(), holidayMap) && safe(row.getLateMinutes()) > 0)
+                    .count();
+            int earlyDays = (int) rows.stream()
+                    .filter(row -> !isDayOff(row.getWorkDate(), holidayMap) && safe(row.getEarlyLeaveMinutes()) > 0)
+                    .count();
+            int missingDays = (int) rows.stream()
+                    .filter(row -> !isDayOff(row.getWorkDate(), holidayMap)
+                            && (row.getStatus() == AttendanceStatus.MISSING_CHECK_IN || row.getStatus() == AttendanceStatus.MISSING_CHECK_OUT))
+                    .count();
+            int totalWorkingMinutes = rows.stream()
+                    .mapToInt(row -> safe(row.getTotalWorkingMinutes()))
+                    .sum();
+            int totalOvertimeMinutes = rows.stream()
+                    .mapToInt(row -> safe(row.getOvertimeMinutes()))
+                    .sum();
+            int totalLateMinutes = rows.stream()
+                    .filter(row -> !isDayOff(row.getWorkDate(), holidayMap))
+                    .mapToInt(row -> safe(row.getLateMinutes()))
+                    .sum();
+            int totalEarlyMinutes = rows.stream()
+                    .filter(row -> !isDayOff(row.getWorkDate(), holidayMap))
+                    .mapToInt(row -> safe(row.getEarlyLeaveMinutes()))
+                    .sum();
+
+            LeaveBalance annualBalance = findAnnualLeaveBalance(employee.getId(), startDate.getYear()).orElse(null);
             return new AttendanceDtos.AttendanceSummaryResponse(
                     employee.getId(),
                     employee.getEmployeeCode(),
@@ -312,9 +349,9 @@ public class AttendanceCalculationService {
                     teamOfEmployeeId,
                     team == null ? null : team.getCode(),
                     team == null ? null : team.getName(),
-                    from,
-                    to,
-                    Math.max(0, numberOfDays(from, to) - dayOffCount),
+                    startDate,
+                    endDate,
+                    Math.max(0, numberOfDays(startDate, endDate) - dayOffCount),
                     actualWorkingDays,
                     dayOffCount,
                     absentDays,
@@ -594,13 +631,21 @@ public class AttendanceCalculationService {
     }
 
     private int countDayOff(LocalDate from, LocalDate to) {
+        return countDayOff(from, to, buildHolidayMap(from, to));
+    }
+
+    private int countDayOff(LocalDate from, LocalDate to, Map<LocalDate, Holiday> holidayMap) {
         int count = 0;
         LocalDate date = from;
         while (!date.isAfter(to)) {
-            if (isDayOff(date)) count++;
+            if (isDayOff(date, holidayMap)) count++;
             date = date.plusDays(1);
         }
         return count;
+    }
+
+    private boolean isDayOff(LocalDate date, Map<LocalDate, Holiday> holidayMap) {
+        return isWeekend(date) || holidayMap.containsKey(date);
     }
 
     private int numberOfDays(LocalDate from, LocalDate to) {

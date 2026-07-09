@@ -8,6 +8,7 @@ import { DevicePage } from './pages/DevicePage';
 import { DeviceSimulatorPage } from './pages/DeviceSimulatorPage';
 import { AttendancePage } from './pages/AttendancePage';
 import { RequestPage } from './pages/RequestPage';
+import { ProfilePage } from './pages/ProfilePage';
 import { entityPages } from './entityPages';
 
 export default function App() {
@@ -24,6 +25,7 @@ export default function App() {
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="profile" element={<ProfilePage />} />
         <Route path="devices" element={<DevicePage />} />
         <Route path="device-simulator" element={<DeviceSimulatorPage />} />
         <Route path="attendances" element={<AttendancePage />} />

@@ -3,6 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../state/AuthContext';
 import { roleLabel } from '../utils/labels';
 import { FloatingChatbot } from './FloatingChatbot';
+import './LayoutUserMenu.css';
 
 type MenuItem = { to: string; label: string; show: boolean };
 type MenuGroup = { label: string; items: MenuItem[] };
@@ -29,6 +30,10 @@ export function Layout() {
     if (closeTimer.current) window.clearTimeout(closeTimer.current);
     setOpenGroup(null);
   }
+
+  const userDisplayName = user?.employeeCode
+    ? `${user.employeeCode} - ${user.employeeName || user.fullName}`
+    : user?.fullName || user?.username;
 
   const groups: MenuGroup[] = [
     {
@@ -119,10 +124,17 @@ export function Layout() {
         </nav>
 
         <div className="user-inline">
-          <div>
-            <strong>{user?.employeeCode ? `${user.employeeCode} - ${user.employeeName || user.fullName}` : user?.fullName || user?.username}</strong>
-            <span>{user?.roles.map(roleLabel).join(', ')}</span>
-          </div>
+          <NavLink
+            to="/profile"
+            className={({ isActive }) => `user-profile-link ${isActive ? 'active' : ''}`}
+            title="Chỉnh sửa thông tin cá nhân"
+          >
+            <span className="user-avatar-dot">{String(userDisplayName || 'U').slice(0, 1).toUpperCase()}</span>
+            <span className="user-profile-text">
+              <strong>{userDisplayName}</strong>
+              <span>{user?.roles.map(roleLabel).join(', ')}</span>
+            </span>
+          </NavLink>
           <button className="secondary logout-button" onClick={logout}>Đăng xuất</button>
         </div>
       </header>
